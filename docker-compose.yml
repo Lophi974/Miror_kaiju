@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - "9797:5432"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  nodeback:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    ports:
+      - "1919:9292"
+    env_file:
+      - ./backend/.env
+    environment:
+      - CI=true
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /backend
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./backend/package.json
+
+  nodefront:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "9001:9393"
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - CI=true
+
+volumes:
+  db_data:
