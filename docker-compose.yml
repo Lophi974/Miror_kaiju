@@ -1,4 +1,5 @@
 services:
+
   db:
     image: postgres
     restart: always
@@ -7,7 +8,7 @@ services:
     env_file:
       - ./backend/.env
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
 
   nodeback:
     build:

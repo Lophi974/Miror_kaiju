@@ -1,10 +1,19 @@
 {
   "compilerOptions": {
-    "target": "es6", // The JavaScript version to compile to (ES6 is widely supported)
-    "module": "commonjs", // The module system Node.js uses (require/exports)
-    "outDir": "./dist", // Compiled JavaScript code will be placed here
-    "rootDir": "./src", // TypeScript source code lives inside the src folder
-    "strict": true, // Enable strict type-checking for better code quality
-    "esModuleInterop": true // Allows default imports from CommonJS modules (important for Express & Prisma)
-  }
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": ["src/**/*.ts"]
 }
