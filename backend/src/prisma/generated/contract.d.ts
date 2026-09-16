@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'bd6cd4febdccf911cbc0230a0ee66d1eeb16a0f11a9a95931dbe32fc35a3feeb'>;
+  StorageHashBase<'9bea109ee5065f6a1dbb74b49e94505c55774da7b92f3ac00a48cb4dc6183337'>;
 export type ExecutionHash =
-  ExecutionHashBase<'fded2d39ac902307abfa1d94180d6742a85b04ee38d7795237e17f66b04315ae'>;
+  ExecutionHashBase<'d0ad5c9dc86bb9861779584f0f08f91b659ede3311b0d99fdcd6a3ebbc667be3'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -242,112 +242,856 @@ type DefaultLiteralValue<CodecId extends string, Encoded> = CodecId extends keyo
 
 export type FieldOutputTypes = {
   readonly public: {
-    readonly Post: {
+    readonly AuditLog: {
+      readonly id: Char<36>;
+      readonly actorId: Char<36> | null;
+      readonly action: CodecTypes['pg/text@1']['output'];
+      readonly entityType: CodecTypes['pg/text@1']['output'];
+      readonly entityId: CodecTypes['pg/text@1']['output'] | null;
+      readonly statusCode: CodecTypes['pg/int4@1']['output'] | null;
+      readonly detail: CodecTypes['pg/jsonb@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly CalendarEvent: {
       readonly id: Char<36>;
       readonly title: CodecTypes['pg/text@1']['output'];
-      readonly content: CodecTypes['pg/text@1']['output'] | null;
-      readonly authorId: Char<36>;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly description: CodecTypes['pg/text@1']['output'] | null;
+      readonly quarterId: Char<36> | null;
+      readonly startAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly endAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly type: CodecTypes['pg/text@1']['output'];
+      readonly createdById: Char<36>;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly ConflictNotification: {
+      readonly id: Char<36>;
+      readonly requestAId: Char<36>;
+      readonly requestBId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly resolved: CodecTypes['pg/bool@1']['output'];
+    };
+    readonly DistrictSeverity: {
+      readonly id: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly level: CodecTypes['pg/int4@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly Notification: {
+      readonly id: Char<36>;
+      readonly userId: Char<36>;
+      readonly type: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/jsonb@1']['output'];
+      readonly read: CodecTypes['pg/bool@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly Quarter: {
+      readonly id: Char<36>;
+      readonly code: 'A' | 'E' | 'W' | 'X' | 'Z';
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly hasSeaAccess: CodecTypes['pg/bool@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly QuarterAdjacency: {
+      readonly id: Char<36>;
+      readonly quarterAId: Char<36>;
+      readonly quarterBId: Char<36>;
+    };
+    readonly QuarterResource: {
+      readonly id: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly initialQuantity: CodecTypes['pg/int4@1']['output'];
+      readonly currentQuantity: CodecTypes['pg/int4@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly ReservationRequest: {
+      readonly id: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly quantity: CodecTypes['pg/int4@1']['output'];
+      readonly requestedById: Char<36>;
+      readonly status: 'ACTIVE' | 'RELEASED' | 'EXPIRED' | 'CANCELLED';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    };
+    readonly ResourceType: {
+      readonly id: Char<36>;
+      readonly code: CodecTypes['pg/text@1']['output'];
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly unit: CodecTypes['pg/text@1']['output'];
+    };
+    readonly SeverityHistory: {
+      readonly id: Char<36>;
+      readonly districtSeverityId: Char<36>;
+      readonly previousLevel: CodecTypes['pg/int4@1']['output'];
+      readonly newLevel: CodecTypes['pg/int4@1']['output'];
+      readonly changedById: Char<36> | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly SystemConfig: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly currentLevel: CodecTypes['pg/int4@1']['output'];
+      readonly retentionPercent: CodecTypes['pg/int4@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedById: Char<36> | null;
+    };
+    readonly TransferRequest: {
+      readonly id: Char<36>;
+      readonly requestingQuarterId: Char<36>;
+      readonly supplyingQuarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly quantity: CodecTypes['pg/int4@1']['output'];
+      readonly routeType: 'DIRECT' | 'TRANSIT' | 'MARITIME';
+      readonly status:
+        'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+      readonly disasterLevelAtRequest: CodecTypes['pg/int4@1']['output'];
+      readonly createdById: Char<36>;
+      readonly decidedById: Char<36> | null;
+      readonly rejectionCode:
+        | 'NOT_ADJACENT'
+        | 'INSUFFICIENT_SURPLUS'
+        | 'BELOW_RETENTION_THRESHOLD'
+        | 'PERMISSION_DENIED'
+        | 'LEVEL_TOO_LOW'
+        | 'TRANSIT_NOT_APPROVED'
+        | 'MARITIME_NOT_ALLOWED'
+        | 'SELF_TRANSFER'
+        | 'INVALID_QUANTITY'
+        | 'XENO_PRIORITY_PENDING'
+        | null;
+      readonly rejectionReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    };
+    readonly TransitApproval: {
+      readonly id: Char<36>;
+      readonly transferRequestId: Char<36>;
+      readonly transitQuarterId: Char<36>;
+      readonly order: CodecTypes['pg/int4@1']['output'];
+      readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      readonly approvedById: Char<36> | null;
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly User: {
       readonly id: Char<36>;
       readonly email: CodecTypes['pg/text@1']['output'];
-      readonly username: CodecTypes['pg/text@1']['output'] | null;
-      readonly name: CodecTypes['pg/text@1']['output'] | null;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly passwordHash: CodecTypes['pg/text@1']['output'];
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly role: 'QC' | 'LC' | 'CD';
+      readonly quarterId: Char<36> | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
   };
 };
 export type FieldInputTypes = {
   readonly public: {
-    readonly Post: {
+    readonly AuditLog: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly actorId: CodecTypes['sql/char@1']['input'] | null;
+      readonly action: CodecTypes['pg/text@1']['input'];
+      readonly entityType: CodecTypes['pg/text@1']['input'];
+      readonly entityId: CodecTypes['pg/text@1']['input'] | null;
+      readonly statusCode: CodecTypes['pg/int4@1']['input'] | null;
+      readonly detail: CodecTypes['pg/jsonb@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly CalendarEvent: {
       readonly id: CodecTypes['sql/char@1']['input'];
       readonly title: CodecTypes['pg/text@1']['input'];
-      readonly content: CodecTypes['pg/text@1']['input'] | null;
-      readonly authorId: CodecTypes['sql/char@1']['input'];
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly description: CodecTypes['pg/text@1']['input'] | null;
+      readonly quarterId: CodecTypes['sql/char@1']['input'] | null;
+      readonly startAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly endAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly type: CodecTypes['pg/text@1']['input'];
+      readonly createdById: CodecTypes['sql/char@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly ConflictNotification: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly requestAId: CodecTypes['sql/char@1']['input'];
+      readonly requestBId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly resolved: CodecTypes['pg/bool@1']['input'];
+    };
+    readonly DistrictSeverity: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly level: CodecTypes['pg/int4@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly Notification: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly userId: CodecTypes['sql/char@1']['input'];
+      readonly type: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/jsonb@1']['input'];
+      readonly read: CodecTypes['pg/bool@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly Quarter: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly code: 'A' | 'E' | 'W' | 'X' | 'Z';
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly hasSeaAccess: CodecTypes['pg/bool@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly QuarterAdjacency: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterAId: CodecTypes['sql/char@1']['input'];
+      readonly quarterBId: CodecTypes['sql/char@1']['input'];
+    };
+    readonly QuarterResource: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly initialQuantity: CodecTypes['pg/int4@1']['input'];
+      readonly currentQuantity: CodecTypes['pg/int4@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly ReservationRequest: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly quantity: CodecTypes['pg/int4@1']['input'];
+      readonly requestedById: CodecTypes['sql/char@1']['input'];
+      readonly status: 'ACTIVE' | 'RELEASED' | 'EXPIRED' | 'CANCELLED';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+    };
+    readonly ResourceType: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly code: CodecTypes['pg/text@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly unit: CodecTypes['pg/text@1']['input'];
+    };
+    readonly SeverityHistory: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly districtSeverityId: CodecTypes['sql/char@1']['input'];
+      readonly previousLevel: CodecTypes['pg/int4@1']['input'];
+      readonly newLevel: CodecTypes['pg/int4@1']['input'];
+      readonly changedById: CodecTypes['sql/char@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly SystemConfig: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly currentLevel: CodecTypes['pg/int4@1']['input'];
+      readonly retentionPercent: CodecTypes['pg/int4@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedById: CodecTypes['sql/char@1']['input'] | null;
+    };
+    readonly TransferRequest: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly requestingQuarterId: CodecTypes['sql/char@1']['input'];
+      readonly supplyingQuarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly quantity: CodecTypes['pg/int4@1']['input'];
+      readonly routeType: 'DIRECT' | 'TRANSIT' | 'MARITIME';
+      readonly status:
+        'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+      readonly disasterLevelAtRequest: CodecTypes['pg/int4@1']['input'];
+      readonly createdById: CodecTypes['sql/char@1']['input'];
+      readonly decidedById: CodecTypes['sql/char@1']['input'] | null;
+      readonly rejectionCode:
+        | 'NOT_ADJACENT'
+        | 'INSUFFICIENT_SURPLUS'
+        | 'BELOW_RETENTION_THRESHOLD'
+        | 'PERMISSION_DENIED'
+        | 'LEVEL_TOO_LOW'
+        | 'TRANSIT_NOT_APPROVED'
+        | 'MARITIME_NOT_ALLOWED'
+        | 'SELF_TRANSFER'
+        | 'INVALID_QUANTITY'
+        | 'XENO_PRIORITY_PENDING'
+        | null;
+      readonly rejectionReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+    };
+    readonly TransitApproval: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly transferRequestId: CodecTypes['sql/char@1']['input'];
+      readonly transitQuarterId: CodecTypes['sql/char@1']['input'];
+      readonly order: CodecTypes['pg/int4@1']['input'];
+      readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      readonly approvedById: CodecTypes['sql/char@1']['input'] | null;
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly User: {
       readonly id: CodecTypes['sql/char@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
-      readonly username: CodecTypes['pg/text@1']['input'] | null;
-      readonly name: CodecTypes['pg/text@1']['input'] | null;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly passwordHash: CodecTypes['pg/text@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly role: 'QC' | 'LC' | 'CD';
+      readonly quarterId: CodecTypes['sql/char@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
   };
 };
 export type StorageColumnTypes = {
   readonly public: {
-    readonly Post: {
-      readonly authorId: Char<36>;
-      readonly content: CodecTypes['pg/text@1']['output'] | null;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly audit_logs: {
+      readonly action: CodecTypes['pg/text@1']['output'];
+      readonly actorId: Char<36> | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly detail: CodecTypes['pg/jsonb@1']['output'] | null;
+      readonly entityId: CodecTypes['pg/text@1']['output'] | null;
+      readonly entityType: CodecTypes['pg/text@1']['output'];
       readonly id: Char<36>;
-      readonly title: CodecTypes['pg/text@1']['output'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly statusCode: CodecTypes['pg/int4@1']['output'] | null;
     };
-    readonly User: {
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly calendar_events: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdById: Char<36>;
+      readonly description: CodecTypes['pg/text@1']['output'] | null;
+      readonly endAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly id: Char<36>;
+      readonly quarterId: Char<36> | null;
+      readonly startAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly type: CodecTypes['pg/text@1']['output'];
+    };
+    readonly conflict_notifications: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly requestAId: Char<36>;
+      readonly requestBId: Char<36>;
+      readonly resolved: CodecTypes['pg/bool@1']['output'];
+      readonly resourceTypeId: Char<36>;
+    };
+    readonly district_severities: {
+      readonly id: Char<36>;
+      readonly level: CodecTypes['pg/int4@1']['output'];
+      readonly quarterId: Char<36>;
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly notifications: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: Char<36>;
+      readonly payload: CodecTypes['pg/jsonb@1']['output'];
+      readonly read: CodecTypes['pg/bool@1']['output'];
+      readonly type: CodecTypes['pg/text@1']['output'];
+      readonly userId: Char<36>;
+    };
+    readonly quarter_adjacencies: {
+      readonly id: Char<36>;
+      readonly quarterAId: Char<36>;
+      readonly quarterBId: Char<36>;
+    };
+    readonly quarter_resources: {
+      readonly currentQuantity: CodecTypes['pg/int4@1']['output'];
+      readonly id: Char<36>;
+      readonly initialQuantity: CodecTypes['pg/int4@1']['output'];
+      readonly quarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly quarters: {
+      readonly code: 'A' | 'E' | 'W' | 'X' | 'Z';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly hasSeaAccess: CodecTypes['pg/bool@1']['output'];
+      readonly id: Char<36>;
+      readonly name: CodecTypes['pg/text@1']['output'];
+    };
+    readonly reservation_requests: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: Char<36>;
+      readonly quantity: CodecTypes['pg/int4@1']['output'];
+      readonly quarterId: Char<36>;
+      readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly requestedById: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly status: 'ACTIVE' | 'RELEASED' | 'EXPIRED' | 'CANCELLED';
+    };
+    readonly resource_types: {
+      readonly code: CodecTypes['pg/text@1']['output'];
+      readonly id: Char<36>;
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly unit: CodecTypes['pg/text@1']['output'];
+    };
+    readonly severity_history: {
+      readonly changedById: Char<36> | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly districtSeverityId: Char<36>;
+      readonly id: Char<36>;
+      readonly newLevel: CodecTypes['pg/int4@1']['output'];
+      readonly previousLevel: CodecTypes['pg/int4@1']['output'];
+    };
+    readonly system_config: {
+      readonly currentLevel: CodecTypes['pg/int4@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly retentionPercent: CodecTypes['pg/int4@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedById: Char<36> | null;
+    };
+    readonly transfer_requests: {
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdById: Char<36>;
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly decidedById: Char<36> | null;
+      readonly disasterLevelAtRequest: CodecTypes['pg/int4@1']['output'];
+      readonly id: Char<36>;
+      readonly quantity: CodecTypes['pg/int4@1']['output'];
+      readonly rejectionCode:
+        | 'NOT_ADJACENT'
+        | 'INSUFFICIENT_SURPLUS'
+        | 'BELOW_RETENTION_THRESHOLD'
+        | 'PERMISSION_DENIED'
+        | 'LEVEL_TOO_LOW'
+        | 'TRANSIT_NOT_APPROVED'
+        | 'MARITIME_NOT_ALLOWED'
+        | 'SELF_TRANSFER'
+        | 'INVALID_QUANTITY'
+        | 'XENO_PRIORITY_PENDING'
+        | null;
+      readonly rejectionReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly requestingQuarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly routeType: 'DIRECT' | 'TRANSIT' | 'MARITIME';
+      readonly status:
+        'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+      readonly supplyingQuarterId: Char<36>;
+    };
+    readonly transit_approvals: {
+      readonly approvedById: Char<36> | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly id: Char<36>;
+      readonly order: CodecTypes['pg/int4@1']['output'];
+      readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      readonly transferRequestId: Char<36>;
+      readonly transitQuarterId: Char<36>;
+    };
+    readonly users: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
       readonly id: Char<36>;
-      readonly name: CodecTypes['pg/text@1']['output'] | null;
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly username: CodecTypes['pg/text@1']['output'] | null;
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly passwordHash: CodecTypes['pg/text@1']['output'];
+      readonly quarterId: Char<36> | null;
+      readonly role: 'QC' | 'LC' | 'CD';
     };
   };
 };
 export type StorageColumnInputTypes = {
   readonly public: {
-    readonly Post: {
-      readonly authorId: CodecTypes['sql/char@1']['input'];
-      readonly content: CodecTypes['pg/text@1']['input'] | null;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    readonly audit_logs: {
+      readonly action: CodecTypes['pg/text@1']['input'];
+      readonly actorId: CodecTypes['sql/char@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly detail: CodecTypes['pg/jsonb@1']['input'] | null;
+      readonly entityId: CodecTypes['pg/text@1']['input'] | null;
+      readonly entityType: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['sql/char@1']['input'];
-      readonly title: CodecTypes['pg/text@1']['input'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly statusCode: CodecTypes['pg/int4@1']['input'] | null;
     };
-    readonly User: {
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    readonly calendar_events: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdById: CodecTypes['sql/char@1']['input'];
+      readonly description: CodecTypes['pg/text@1']['input'] | null;
+      readonly endAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'] | null;
+      readonly startAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly type: CodecTypes['pg/text@1']['input'];
+    };
+    readonly conflict_notifications: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly requestAId: CodecTypes['sql/char@1']['input'];
+      readonly requestBId: CodecTypes['sql/char@1']['input'];
+      readonly resolved: CodecTypes['pg/bool@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+    };
+    readonly district_severities: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly level: CodecTypes['pg/int4@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly notifications: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly payload: CodecTypes['pg/jsonb@1']['input'];
+      readonly read: CodecTypes['pg/bool@1']['input'];
+      readonly type: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['sql/char@1']['input'];
+    };
+    readonly quarter_adjacencies: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterAId: CodecTypes['sql/char@1']['input'];
+      readonly quarterBId: CodecTypes['sql/char@1']['input'];
+    };
+    readonly quarter_resources: {
+      readonly currentQuantity: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly initialQuantity: CodecTypes['pg/int4@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly quarters: {
+      readonly code: 'A' | 'E' | 'W' | 'X' | 'Z';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly hasSeaAccess: CodecTypes['pg/bool@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+    };
+    readonly reservation_requests: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quantity: CodecTypes['pg/int4@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly requestedById: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly status: 'ACTIVE' | 'RELEASED' | 'EXPIRED' | 'CANCELLED';
+    };
+    readonly resource_types: {
+      readonly code: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly unit: CodecTypes['pg/text@1']['input'];
+    };
+    readonly severity_history: {
+      readonly changedById: CodecTypes['sql/char@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly districtSeverityId: CodecTypes['sql/char@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly newLevel: CodecTypes['pg/int4@1']['input'];
+      readonly previousLevel: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly system_config: {
+      readonly currentLevel: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly retentionPercent: CodecTypes['pg/int4@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedById: CodecTypes['sql/char@1']['input'] | null;
+    };
+    readonly transfer_requests: {
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdById: CodecTypes['sql/char@1']['input'];
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly decidedById: CodecTypes['sql/char@1']['input'] | null;
+      readonly disasterLevelAtRequest: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quantity: CodecTypes['pg/int4@1']['input'];
+      readonly rejectionCode:
+        | 'NOT_ADJACENT'
+        | 'INSUFFICIENT_SURPLUS'
+        | 'BELOW_RETENTION_THRESHOLD'
+        | 'PERMISSION_DENIED'
+        | 'LEVEL_TOO_LOW'
+        | 'TRANSIT_NOT_APPROVED'
+        | 'MARITIME_NOT_ALLOWED'
+        | 'SELF_TRANSFER'
+        | 'INVALID_QUANTITY'
+        | 'XENO_PRIORITY_PENDING'
+        | null;
+      readonly rejectionReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly requestingQuarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly routeType: 'DIRECT' | 'TRANSIT' | 'MARITIME';
+      readonly status:
+        'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+      readonly supplyingQuarterId: CodecTypes['sql/char@1']['input'];
+    };
+    readonly transit_approvals: {
+      readonly approvedById: CodecTypes['sql/char@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly decidedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly order: CodecTypes['pg/int4@1']['input'];
+      readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      readonly transferRequestId: CodecTypes['sql/char@1']['input'];
+      readonly transitQuarterId: CodecTypes['sql/char@1']['input'];
+    };
+    readonly users: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['sql/char@1']['input'];
-      readonly name: CodecTypes['pg/text@1']['input'] | null;
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly username: CodecTypes['pg/text@1']['input'] | null;
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly passwordHash: CodecTypes['pg/text@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'] | null;
+      readonly role: 'QC' | 'LC' | 'CD';
     };
   };
 };
 
 export namespace Models {
+  export type public_SystemConfig = {
+    id: CodecTypes['pg/int4@1']['output'];
+    currentLevel: CodecTypes['pg/int4@1']['output'];
+    retentionPercent: CodecTypes['pg/int4@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    updatedById: Char<36> | null;
+    updatedBy: public_User | null;
+    readonly [RelationKeys]?: 'updatedBy';
+  };
+  export type public_Quarter = {
+    id: Char<36>;
+    code: 'A' | 'E' | 'W' | 'X' | 'Z';
+    name: CodecTypes['pg/text@1']['output'];
+    hasSeaAccess: CodecTypes['pg/bool@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    users: public_User[];
+    resources: public_QuarterResource[];
+    severity: public_DistrictSeverity | null;
+    adjacentAsA: public_QuarterAdjacency[];
+    adjacentAsB: public_QuarterAdjacency[];
+    outgoingRequests: public_TransferRequest[];
+    incomingRequests: public_TransferRequest[];
+    transitSteps: public_TransitApproval[];
+    reservations: public_ReservationRequest[];
+    calendarEvents: public_CalendarEvent[];
+    conflictNotifications: public_ConflictNotification[];
+    readonly [RelationKeys]?:
+      | 'users'
+      | 'resources'
+      | 'severity'
+      | 'adjacentAsA'
+      | 'adjacentAsB'
+      | 'outgoingRequests'
+      | 'incomingRequests'
+      | 'transitSteps'
+      | 'reservations'
+      | 'calendarEvents'
+      | 'conflictNotifications';
+  };
+  export type public_QuarterAdjacency = {
+    id: Char<36>;
+    quarterAId: Char<36>;
+    quarterBId: Char<36>;
+    quarterA: public_Quarter;
+    quarterB: public_Quarter;
+    readonly [RelationKeys]?: 'quarterA' | 'quarterB';
+  };
   export type public_User = {
     id: Char<36>;
     email: CodecTypes['pg/text@1']['output'];
-    username: CodecTypes['pg/text@1']['output'] | null;
-    name: CodecTypes['pg/text@1']['output'] | null;
-    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    posts: public_Post[];
-    readonly [RelationKeys]?: 'posts';
+    passwordHash: CodecTypes['pg/text@1']['output'];
+    name: CodecTypes['pg/text@1']['output'];
+    role: 'QC' | 'LC' | 'CD';
+    quarterId: Char<36> | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    quarter: public_Quarter | null;
+    createdRequests: public_TransferRequest[];
+    decidedRequests: public_TransferRequest[];
+    transitApprovals: public_TransitApproval[];
+    reservations: public_ReservationRequest[];
+    auditLogs: public_AuditLog[];
+    notifications: public_Notification[];
+    calendarEvents: public_CalendarEvent[];
+    severityChanges: public_SeverityHistory[];
+    systemConfigEdits: public_SystemConfig[];
+    readonly [RelationKeys]?:
+      | 'quarter'
+      | 'createdRequests'
+      | 'decidedRequests'
+      | 'transitApprovals'
+      | 'reservations'
+      | 'auditLogs'
+      | 'notifications'
+      | 'calendarEvents'
+      | 'severityChanges'
+      | 'systemConfigEdits';
   };
-  export type public_Post = {
+  export type public_ResourceType = {
+    id: Char<36>;
+    code: CodecTypes['pg/text@1']['output'];
+    name: CodecTypes['pg/text@1']['output'];
+    unit: CodecTypes['pg/text@1']['output'];
+    quarterResources: public_QuarterResource[];
+    transferRequests: public_TransferRequest[];
+    reservations: public_ReservationRequest[];
+    conflictNotifications: public_ConflictNotification[];
+    readonly [RelationKeys]?:
+      'quarterResources' | 'transferRequests' | 'reservations' | 'conflictNotifications';
+  };
+  export type public_QuarterResource = {
+    id: Char<36>;
+    quarterId: Char<36>;
+    resourceTypeId: Char<36>;
+    initialQuantity: CodecTypes['pg/int4@1']['output'];
+    currentQuantity: CodecTypes['pg/int4@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    quarter: public_Quarter;
+    resourceType: public_ResourceType;
+    readonly [RelationKeys]?: 'quarter' | 'resourceType';
+  };
+  export type public_DistrictSeverity = {
+    id: Char<36>;
+    quarterId: Char<36>;
+    level: CodecTypes['pg/int4@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    quarter: public_Quarter;
+    history: public_SeverityHistory[];
+    readonly [RelationKeys]?: 'quarter' | 'history';
+  };
+  export type public_SeverityHistory = {
+    id: Char<36>;
+    districtSeverityId: Char<36>;
+    previousLevel: CodecTypes['pg/int4@1']['output'];
+    newLevel: CodecTypes['pg/int4@1']['output'];
+    changedById: Char<36> | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    districtSeverity: public_DistrictSeverity;
+    changedBy: public_User | null;
+    readonly [RelationKeys]?: 'districtSeverity' | 'changedBy';
+  };
+  export type public_ReservationRequest = {
+    id: Char<36>;
+    quarterId: Char<36>;
+    resourceTypeId: Char<36>;
+    quantity: CodecTypes['pg/int4@1']['output'];
+    requestedById: Char<36>;
+    status: 'ACTIVE' | 'RELEASED' | 'EXPIRED' | 'CANCELLED';
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    releasedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    quarter: public_Quarter;
+    resourceType: public_ResourceType;
+    requestedBy: public_User;
+    readonly [RelationKeys]?: 'quarter' | 'resourceType' | 'requestedBy';
+  };
+  export type public_TransferRequest = {
+    id: Char<36>;
+    requestingQuarterId: Char<36>;
+    supplyingQuarterId: Char<36>;
+    resourceTypeId: Char<36>;
+    quantity: CodecTypes['pg/int4@1']['output'];
+    routeType: 'DIRECT' | 'TRANSIT' | 'MARITIME';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+    disasterLevelAtRequest: CodecTypes['pg/int4@1']['output'];
+    createdById: Char<36>;
+    decidedById: Char<36> | null;
+    rejectionCode:
+      | 'NOT_ADJACENT'
+      | 'INSUFFICIENT_SURPLUS'
+      | 'BELOW_RETENTION_THRESHOLD'
+      | 'PERMISSION_DENIED'
+      | 'LEVEL_TOO_LOW'
+      | 'TRANSIT_NOT_APPROVED'
+      | 'MARITIME_NOT_ALLOWED'
+      | 'SELF_TRANSFER'
+      | 'INVALID_QUANTITY'
+      | 'XENO_PRIORITY_PENDING'
+      | null;
+    rejectionReason: CodecTypes['pg/text@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    decidedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    requestingQuarter: public_Quarter;
+    supplyingQuarter: public_Quarter;
+    resourceType: public_ResourceType;
+    createdBy: public_User;
+    decidedBy: public_User | null;
+    transitSteps: public_TransitApproval[];
+    conflictsAsA: public_ConflictNotification[];
+    conflictsAsB: public_ConflictNotification[];
+    readonly [RelationKeys]?:
+      | 'requestingQuarter'
+      | 'supplyingQuarter'
+      | 'resourceType'
+      | 'createdBy'
+      | 'decidedBy'
+      | 'transitSteps'
+      | 'conflictsAsA'
+      | 'conflictsAsB';
+  };
+  export type public_TransitApproval = {
+    id: Char<36>;
+    transferRequestId: Char<36>;
+    transitQuarterId: Char<36>;
+    order: CodecTypes['pg/int4@1']['output'];
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    approvedById: Char<36> | null;
+    decidedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    transferRequest: public_TransferRequest;
+    transitQuarter: public_Quarter;
+    approvedBy: public_User | null;
+    readonly [RelationKeys]?: 'transferRequest' | 'transitQuarter' | 'approvedBy';
+  };
+  export type public_ConflictNotification = {
+    id: Char<36>;
+    requestAId: Char<36>;
+    requestBId: Char<36>;
+    resourceTypeId: Char<36>;
+    quarterId: Char<36>;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    resolved: CodecTypes['pg/bool@1']['output'];
+    requestA: public_TransferRequest;
+    requestB: public_TransferRequest;
+    resourceType: public_ResourceType;
+    quarter: public_Quarter;
+    readonly [RelationKeys]?: 'requestA' | 'requestB' | 'resourceType' | 'quarter';
+  };
+  export type public_AuditLog = {
+    id: Char<36>;
+    actorId: Char<36> | null;
+    action: CodecTypes['pg/text@1']['output'];
+    entityType: CodecTypes['pg/text@1']['output'];
+    entityId: CodecTypes['pg/text@1']['output'] | null;
+    statusCode: CodecTypes['pg/int4@1']['output'] | null;
+    detail: CodecTypes['pg/jsonb@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    actor: public_User | null;
+    readonly [RelationKeys]?: 'actor';
+  };
+  export type public_Notification = {
+    id: Char<36>;
+    userId: Char<36>;
+    type: CodecTypes['pg/text@1']['output'];
+    payload: CodecTypes['pg/jsonb@1']['output'];
+    read: CodecTypes['pg/bool@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    user: public_User;
+    readonly [RelationKeys]?: 'user';
+  };
+  export type public_CalendarEvent = {
     id: Char<36>;
     title: CodecTypes['pg/text@1']['output'];
-    content: CodecTypes['pg/text@1']['output'] | null;
-    authorId: Char<36>;
-    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    author: public_User;
-    readonly [RelationKeys]?: 'author';
+    description: CodecTypes['pg/text@1']['output'] | null;
+    quarterId: Char<36> | null;
+    startAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    endAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    type: CodecTypes['pg/text@1']['output'];
+    createdById: Char<36>;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    quarter: public_Quarter | null;
+    createdBy: public_User;
+    readonly [RelationKeys]?: 'quarter' | 'createdBy';
   };
 }
 
 export declare const models: {
   public: {
+    SystemConfig: Models.public_SystemConfig;
+    Quarter: Models.public_Quarter;
+    QuarterAdjacency: Models.public_QuarterAdjacency;
     User: Models.public_User;
-    Post: Models.public_Post;
+    ResourceType: Models.public_ResourceType;
+    QuarterResource: Models.public_QuarterResource;
+    DistrictSeverity: Models.public_DistrictSeverity;
+    SeverityHistory: Models.public_SeverityHistory;
+    ReservationRequest: Models.public_ReservationRequest;
+    TransferRequest: Models.public_TransferRequest;
+    TransitApproval: Models.public_TransitApproval;
+    ConflictNotification: Models.public_ConflictNotification;
+    AuditLog: Models.public_AuditLog;
+    Notification: Models.public_Notification;
+    CalendarEvent: Models.public_CalendarEvent;
   };
 };
 
@@ -369,7 +1113,58 @@ type ContractBase = Omit<
         readonly kind: 'postgres-schema';
         readonly entries: {
           readonly table: {
-            readonly Post: {
+            readonly audit_logs: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly actorId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly action: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly entityType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly entityId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly statusCode: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly detail: {
+                  readonly nativeType: 'jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [];
+              foreignKeys: readonly [];
+            };
+            readonly calendar_events: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'character';
@@ -382,12 +1177,33 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
-                readonly content: {
+                readonly description: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
                 };
-                readonly authorId: {
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly startAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+                readonly endAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly type: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdById: {
                   readonly nativeType: 'character';
                   readonly codecId: 'sql/char@1';
                   readonly nullable: false;
@@ -395,14 +1211,9 @@ type ContractBase = Omit<
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
-                };
-                readonly updatedAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: false;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -410,7 +1221,779 @@ type ContractBase = Omit<
               indexes: readonly [];
               foreignKeys: readonly [];
             };
-            readonly User: {
+            readonly conflict_notifications: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly requestAId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly requestBId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly resourceTypeId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly resolved: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'conflict_notifications_requestAId_idx_517d9f2d';
+                  readonly prefix: 'conflict_notifications_requestAId_idx';
+                  readonly columns: readonly ['requestAId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'conflict_notifications_requestBId_idx_d0ae1ad5';
+                  readonly prefix: 'conflict_notifications_requestBId_idx';
+                  readonly columns: readonly ['requestBId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'conflict_notifications';
+                    readonly columns: readonly ['requestAId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'transfer_requests';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'conflict_notifications';
+                    readonly columns: readonly ['requestBId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'transfer_requests';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly district_severities: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly level: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 1>;
+                  };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['quarterId'] }];
+              indexes: readonly [];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'district_severities';
+                    readonly columns: readonly ['quarterId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly notifications: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly userId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly type: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly payload: {
+                  readonly nativeType: 'jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: false;
+                };
+                readonly read: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'notifications_userId_idx_a489d58a';
+                  readonly prefix: 'notifications_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'notifications';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'users';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly quarter_adjacencies: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterAId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterBId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['quarterAId', 'quarterBId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'quarter_adjacencies_quarterAId_idx_0ef12d23';
+                  readonly prefix: 'quarter_adjacencies_quarterAId_idx';
+                  readonly columns: readonly ['quarterAId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'quarter_adjacencies_quarterBId_idx_3ebe3b1e';
+                  readonly prefix: 'quarter_adjacencies_quarterBId_idx';
+                  readonly columns: readonly ['quarterBId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarter_adjacencies';
+                    readonly columns: readonly ['quarterAId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                  readonly name: 'quarter_adjacency_a_fkey';
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarter_adjacencies';
+                    readonly columns: readonly ['quarterBId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                  readonly name: 'quarter_adjacency_b_fkey';
+                },
+              ];
+            };
+            readonly quarter_resources: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly resourceTypeId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly initialQuantity: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly currentQuantity: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['quarterId', 'resourceTypeId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'quarter_resources_quarterId_idx_ceb22f71';
+                  readonly prefix: 'quarter_resources_quarterId_idx';
+                  readonly columns: readonly ['quarterId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'quarter_resources_resourceTypeId_idx_04cc477c';
+                  readonly prefix: 'quarter_resources_resourceTypeId_idx';
+                  readonly columns: readonly ['resourceTypeId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarter_resources';
+                    readonly columns: readonly ['quarterId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarter_resources';
+                    readonly columns: readonly ['resourceTypeId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'resource_types';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly quarters: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly code: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly name: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly hasSeaAccess: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['code'] }];
+              indexes: readonly [];
+              foreignKeys: readonly [];
+            };
+            readonly reservation_requests: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly resourceTypeId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quantity: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly requestedById: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'ACTIVE'>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly releasedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'reservation_requests_quarterId_idx_ceb22f71';
+                  readonly prefix: 'reservation_requests_quarterId_idx';
+                  readonly columns: readonly ['quarterId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'reservation_requests';
+                    readonly columns: readonly ['quarterId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly resource_types: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly code: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly name: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly unit: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'unités'>;
+                  };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['code'] }];
+              indexes: readonly [];
+              foreignKeys: readonly [];
+            };
+            readonly severity_history: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly districtSeverityId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly previousLevel: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly newLevel: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly changedById: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'severity_history_districtSeverityId_idx_8ecd5763';
+                  readonly prefix: 'severity_history_districtSeverityId_idx';
+                  readonly columns: readonly ['districtSeverityId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'severity_history';
+                    readonly columns: readonly ['districtSeverityId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'district_severities';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly system_config: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly currentLevel: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 1>;
+                  };
+                };
+                readonly retentionPercent: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 30>;
+                  };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+                readonly updatedById: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [];
+              foreignKeys: readonly [];
+            };
+            readonly transfer_requests: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly requestingQuarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly supplyingQuarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly resourceTypeId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quantity: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly routeType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'PENDING'>;
+                  };
+                };
+                readonly disasterLevelAtRequest: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly createdById: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly decidedById: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly rejectionCode: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly rejectionReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly decidedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly completedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [];
+              foreignKeys: readonly [];
+            };
+            readonly transit_approvals: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly transferRequestId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly transitQuarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly order: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'PENDING'>;
+                  };
+                };
+                readonly approvedById: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly decidedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['transferRequestId', 'order'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'transit_approvals_transferRequestId_idx_f1f1ed70';
+                  readonly prefix: 'transit_approvals_transferRequestId_idx';
+                  readonly columns: readonly ['transferRequestId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'transit_approvals';
+                    readonly columns: readonly ['transferRequestId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'transfer_requests';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly users: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'character';
@@ -423,32 +2006,107 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
-                readonly username: {
+                readonly passwordHash: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
+                  readonly nullable: false;
                 };
                 readonly name: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly role: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
                   readonly nullable: true;
+                  readonly typeParams: { readonly length: 36 };
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
-                };
-                readonly updatedAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: false;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [{ readonly columns: readonly ['email'] }];
-              indexes: readonly [];
-              foreignKeys: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'users_quarterId_idx_ceb22f71';
+                  readonly prefix: 'users_quarterId_idx';
+                  readonly columns: readonly ['quarterId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'users';
+                    readonly columns: readonly ['quarterId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                  readonly name: 'user_quarter_fkey';
+                },
+              ];
+            };
+          };
+          readonly valueSet: {
+            readonly OfficerRole: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['QC', 'LC', 'CD'];
+            };
+            readonly QuarterCode: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['A', 'E', 'W', 'X', 'Z'];
+            };
+            readonly RejectionCode: {
+              readonly kind: 'valueSet';
+              readonly values: readonly [
+                'NOT_ADJACENT',
+                'INSUFFICIENT_SURPLUS',
+                'BELOW_RETENTION_THRESHOLD',
+                'PERMISSION_DENIED',
+                'LEVEL_TOO_LOW',
+                'TRANSIT_NOT_APPROVED',
+                'MARITIME_NOT_ALLOWED',
+                'SELF_TRANSFER',
+                'INVALID_QUANTITY',
+                'XENO_PRIORITY_PENDING',
+              ];
+            };
+            readonly ReservationStatus: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['ACTIVE', 'RELEASED', 'EXPIRED', 'CANCELLED'];
+            };
+            readonly TransferRouteType: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['DIRECT', 'TRANSIT', 'MARITIME'];
+            };
+            readonly TransferStatus: {
+              readonly kind: 'valueSet';
+              readonly values: readonly [
+                'PENDING',
+                'APPROVED',
+                'REJECTED',
+                'IN_TRANSIT',
+                'COMPLETED',
+                'CANCELLED',
+              ];
+            };
+            readonly TransitApprovalStatus: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['PENDING', 'APPROVED', 'REJECTED'];
             };
           };
         };
@@ -461,14 +2119,135 @@ type ContractBase = Omit<
   readonly target: 'postgres';
   readonly targetFamily: 'sql';
   readonly roots: {
-    readonly User: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
-    readonly Post: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+    readonly system_config: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'SystemConfig';
+    };
+    readonly quarters: { readonly namespace: 'public' & NamespaceId; readonly model: 'Quarter' };
+    readonly quarter_adjacencies: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'QuarterAdjacency';
+    };
+    readonly users: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+    readonly resource_types: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ResourceType';
+    };
+    readonly quarter_resources: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'QuarterResource';
+    };
+    readonly district_severities: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DistrictSeverity';
+    };
+    readonly severity_history: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'SeverityHistory';
+    };
+    readonly reservation_requests: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ReservationRequest';
+    };
+    readonly transfer_requests: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'TransferRequest';
+    };
+    readonly transit_approvals: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'TransitApproval';
+    };
+    readonly conflict_notifications: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ConflictNotification';
+    };
+    readonly audit_logs: { readonly namespace: 'public' & NamespaceId; readonly model: 'AuditLog' };
+    readonly notifications: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'Notification';
+    };
+    readonly calendar_events: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'CalendarEvent';
+    };
   };
   readonly domain: {
     readonly namespaces: {
       readonly public: {
         readonly models: {
-          readonly Post: {
+          readonly AuditLog: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly actorId: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly action: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly entityType: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly entityId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly statusCode: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly detail: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly actor: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['actorId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'audit_logs';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly actorId: { readonly column: 'actorId' };
+                readonly action: { readonly column: 'action' };
+                readonly entityType: { readonly column: 'entityType' };
+                readonly entityId: { readonly column: 'entityId' };
+                readonly statusCode: { readonly column: 'statusCode' };
+                readonly detail: { readonly column: 'detail' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly CalendarEvent: {
             readonly fields: {
               readonly id: {
                 readonly nullable: false;
@@ -482,11 +2261,37 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly content: {
+              readonly description: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly authorId: {
+              readonly quarterId: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly startAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly endAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly type: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdById: {
                 readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
@@ -498,38 +2303,1231 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-              readonly updatedAt: {
-                readonly nullable: false;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
                 };
               };
             };
             readonly relations: {
-              readonly author: {
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly createdBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: false;
                 readonly on: {
-                  readonly localFields: readonly ['authorId'];
+                  readonly localFields: readonly ['createdById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
             };
             readonly storage: {
-              readonly table: 'Post';
+              readonly table: 'calendar_events';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
                 readonly title: { readonly column: 'title' };
-                readonly content: { readonly column: 'content' };
-                readonly authorId: { readonly column: 'authorId' };
+                readonly description: { readonly column: 'description' };
+                readonly quarterId: { readonly column: 'quarterId' };
+                readonly startAt: { readonly column: 'startAt' };
+                readonly endAt: { readonly column: 'endAt' };
+                readonly type: { readonly column: 'type' };
+                readonly createdById: { readonly column: 'createdById' };
                 readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly ConflictNotification: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly requestAId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly requestBId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly resourceTypeId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly resolved: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+            };
+            readonly relations: {
+              readonly requestA: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['requestAId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly requestB: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['requestBId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly resourceType: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResourceType';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['resourceTypeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'conflict_notifications';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly requestAId: { readonly column: 'requestAId' };
+                readonly requestBId: { readonly column: 'requestBId' };
+                readonly resourceTypeId: { readonly column: 'resourceTypeId' };
+                readonly quarterId: { readonly column: 'quarterId' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly resolved: { readonly column: 'resolved' };
+              };
+            };
+          };
+          readonly DistrictSeverity: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly level: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly history: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'SeverityHistory';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['districtSeverityId'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'district_severities';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly quarterId: { readonly column: 'quarterId' };
+                readonly level: { readonly column: 'level' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly Notification: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly type: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
+              readonly read: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'notifications';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly userId: { readonly column: 'userId' };
+                readonly type: { readonly column: 'type' };
+                readonly payload: { readonly column: 'payload' };
+                readonly read: { readonly column: 'read' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly Quarter: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly code: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly name: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly hasSeaAccess: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly users: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
+              readonly resources: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuarterResource';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
+              readonly severity: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DistrictSeverity';
+                };
+                readonly cardinality: '1:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
+              readonly adjacentAsA: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuarterAdjacency';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterAId'];
+                };
+              };
+              readonly adjacentAsB: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuarterAdjacency';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterBId'];
+                };
+              };
+              readonly outgoingRequests: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['requestingQuarterId'];
+                };
+              };
+              readonly incomingRequests: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['supplyingQuarterId'];
+                };
+              };
+              readonly transitSteps: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransitApproval';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['transitQuarterId'];
+                };
+              };
+              readonly reservations: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ReservationRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
+              readonly calendarEvents: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CalendarEvent';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
+              readonly conflictNotifications: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ConflictNotification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'quarters';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly code: { readonly column: 'code' };
+                readonly name: { readonly column: 'name' };
+                readonly hasSeaAccess: { readonly column: 'hasSeaAccess' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly QuarterAdjacency: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterAId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterBId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+            };
+            readonly relations: {
+              readonly quarterA: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterAId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly quarterB: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterBId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'quarter_adjacencies';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly quarterAId: { readonly column: 'quarterAId' };
+                readonly quarterBId: { readonly column: 'quarterBId' };
+              };
+            };
+          };
+          readonly QuarterResource: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly resourceTypeId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly initialQuantity: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly currentQuantity: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly resourceType: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResourceType';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['resourceTypeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'quarter_resources';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly quarterId: { readonly column: 'quarterId' };
+                readonly resourceTypeId: { readonly column: 'resourceTypeId' };
+                readonly initialQuantity: { readonly column: 'initialQuantity' };
+                readonly currentQuantity: { readonly column: 'currentQuantity' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly ReservationRequest: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly resourceTypeId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quantity: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly requestedById: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly releasedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly resourceType: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResourceType';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['resourceTypeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly requestedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['requestedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'reservation_requests';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly quarterId: { readonly column: 'quarterId' };
+                readonly resourceTypeId: { readonly column: 'resourceTypeId' };
+                readonly quantity: { readonly column: 'quantity' };
+                readonly requestedById: { readonly column: 'requestedById' };
+                readonly status: { readonly column: 'status' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly releasedAt: { readonly column: 'releasedAt' };
+              };
+            };
+          };
+          readonly ResourceType: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly code: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly name: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly unit: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+            };
+            readonly relations: {
+              readonly quarterResources: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuarterResource';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['resourceTypeId'];
+                };
+              };
+              readonly transferRequests: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['resourceTypeId'];
+                };
+              };
+              readonly reservations: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ReservationRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['resourceTypeId'];
+                };
+              };
+              readonly conflictNotifications: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ConflictNotification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['resourceTypeId'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'resource_types';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly code: { readonly column: 'code' };
+                readonly name: { readonly column: 'name' };
+                readonly unit: { readonly column: 'unit' };
+              };
+            };
+          };
+          readonly SeverityHistory: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly districtSeverityId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly previousLevel: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly newLevel: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly changedById: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly districtSeverity: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DistrictSeverity';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['districtSeverityId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly changedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['changedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'severity_history';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly districtSeverityId: { readonly column: 'districtSeverityId' };
+                readonly previousLevel: { readonly column: 'previousLevel' };
+                readonly newLevel: { readonly column: 'newLevel' };
+                readonly changedById: { readonly column: 'changedById' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly SystemConfig: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly currentLevel: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly retentionPercent: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly updatedById: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+            };
+            readonly relations: {
+              readonly updatedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['updatedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'system_config';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly currentLevel: { readonly column: 'currentLevel' };
+                readonly retentionPercent: { readonly column: 'retentionPercent' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+                readonly updatedById: { readonly column: 'updatedById' };
+              };
+            };
+          };
+          readonly TransferRequest: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly requestingQuarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly supplyingQuarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly resourceTypeId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quantity: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly routeType: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly disasterLevelAtRequest: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdById: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly decidedById: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly rejectionCode: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly rejectionReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly decidedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly completedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly requestingQuarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['requestingQuarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly supplyingQuarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['supplyingQuarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly resourceType: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResourceType';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['resourceTypeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly createdBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['createdById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly decidedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['decidedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly transitSteps: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransitApproval';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['transferRequestId'];
+                };
+              };
+              readonly conflictsAsA: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ConflictNotification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['requestAId'];
+                };
+              };
+              readonly conflictsAsB: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ConflictNotification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['requestBId'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'transfer_requests';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly requestingQuarterId: { readonly column: 'requestingQuarterId' };
+                readonly supplyingQuarterId: { readonly column: 'supplyingQuarterId' };
+                readonly resourceTypeId: { readonly column: 'resourceTypeId' };
+                readonly quantity: { readonly column: 'quantity' };
+                readonly routeType: { readonly column: 'routeType' };
+                readonly status: { readonly column: 'status' };
+                readonly disasterLevelAtRequest: { readonly column: 'disasterLevelAtRequest' };
+                readonly createdById: { readonly column: 'createdById' };
+                readonly decidedById: { readonly column: 'decidedById' };
+                readonly rejectionCode: { readonly column: 'rejectionCode' };
+                readonly rejectionReason: { readonly column: 'rejectionReason' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly decidedAt: { readonly column: 'decidedAt' };
+                readonly completedAt: { readonly column: 'completedAt' };
+              };
+            };
+          };
+          readonly TransitApproval: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly transferRequestId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly transitQuarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly order: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly approvedById: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly decidedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly transferRequest: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['transferRequestId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly transitQuarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['transitQuarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly approvedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['approvedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'transit_approvals';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly transferRequestId: { readonly column: 'transferRequestId' };
+                readonly transitQuarterId: { readonly column: 'transitQuarterId' };
+                readonly order: { readonly column: 'order' };
+                readonly status: { readonly column: 'status' };
+                readonly approvedById: { readonly column: 'approvedById' };
+                readonly decidedAt: { readonly column: 'decidedAt' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -547,51 +3545,234 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly username: {
-                readonly nullable: true;
+              readonly passwordHash: {
+                readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly name: {
-                readonly nullable: true;
+                readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly role: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly quarterId: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
               };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-              readonly updatedAt: {
-                readonly nullable: false;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
                 };
               };
             };
             readonly relations: {
-              readonly posts: {
-                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly createdRequests: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['authorId'];
+                  readonly targetFields: readonly ['createdById'];
+                };
+              };
+              readonly decidedRequests: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransferRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['decidedById'];
+                };
+              };
+              readonly transitApprovals: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'TransitApproval';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['approvedById'];
+                };
+              };
+              readonly reservations: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ReservationRequest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['requestedById'];
+                };
+              };
+              readonly auditLogs: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'AuditLog';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['actorId'];
+                };
+              };
+              readonly notifications: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Notification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly calendarEvents: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CalendarEvent';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['createdById'];
+                };
+              };
+              readonly severityChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'SeverityHistory';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['changedById'];
+                };
+              };
+              readonly systemConfigEdits: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'SystemConfig';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['updatedById'];
                 };
               };
             };
             readonly storage: {
-              readonly table: 'User';
+              readonly table: 'users';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
                 readonly email: { readonly column: 'email' };
-                readonly username: { readonly column: 'username' };
+                readonly passwordHash: { readonly column: 'passwordHash' };
                 readonly name: { readonly column: 'name' };
+                readonly role: { readonly column: 'role' };
+                readonly quarterId: { readonly column: 'quarterId' };
                 readonly createdAt: { readonly column: 'createdAt' };
-                readonly updatedAt: { readonly column: 'updatedAt' };
               };
             };
+          };
+        };
+        readonly enum: {
+          readonly QuarterCode: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'A'; readonly value: 'A' },
+              { readonly name: 'E'; readonly value: 'E' },
+              { readonly name: 'W'; readonly value: 'W' },
+              { readonly name: 'X'; readonly value: 'X' },
+              { readonly name: 'Z'; readonly value: 'Z' },
+            ];
+          };
+          readonly OfficerRole: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'QC'; readonly value: 'QC' },
+              { readonly name: 'LC'; readonly value: 'LC' },
+              { readonly name: 'CD'; readonly value: 'CD' },
+            ];
+          };
+          readonly ReservationStatus: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'ACTIVE'; readonly value: 'ACTIVE' },
+              { readonly name: 'RELEASED'; readonly value: 'RELEASED' },
+              { readonly name: 'EXPIRED'; readonly value: 'EXPIRED' },
+              { readonly name: 'CANCELLED'; readonly value: 'CANCELLED' },
+            ];
+          };
+          readonly TransferRouteType: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'DIRECT'; readonly value: 'DIRECT' },
+              { readonly name: 'TRANSIT'; readonly value: 'TRANSIT' },
+              { readonly name: 'MARITIME'; readonly value: 'MARITIME' },
+            ];
+          };
+          readonly TransferStatus: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'PENDING'; readonly value: 'PENDING' },
+              { readonly name: 'APPROVED'; readonly value: 'APPROVED' },
+              { readonly name: 'REJECTED'; readonly value: 'REJECTED' },
+              { readonly name: 'IN_TRANSIT'; readonly value: 'IN_TRANSIT' },
+              { readonly name: 'COMPLETED'; readonly value: 'COMPLETED' },
+              { readonly name: 'CANCELLED'; readonly value: 'CANCELLED' },
+            ];
+          };
+          readonly TransitApprovalStatus: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'PENDING'; readonly value: 'PENDING' },
+              { readonly name: 'APPROVED'; readonly value: 'APPROVED' },
+              { readonly name: 'REJECTED'; readonly value: 'REJECTED' },
+            ];
+          };
+          readonly RejectionCode: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'NOT_ADJACENT'; readonly value: 'NOT_ADJACENT' },
+              { readonly name: 'INSUFFICIENT_SURPLUS'; readonly value: 'INSUFFICIENT_SURPLUS' },
+              {
+                readonly name: 'BELOW_RETENTION_THRESHOLD';
+                readonly value: 'BELOW_RETENTION_THRESHOLD';
+              },
+              { readonly name: 'PERMISSION_DENIED'; readonly value: 'PERMISSION_DENIED' },
+              { readonly name: 'LEVEL_TOO_LOW'; readonly value: 'LEVEL_TOO_LOW' },
+              { readonly name: 'TRANSIT_NOT_APPROVED'; readonly value: 'TRANSIT_NOT_APPROVED' },
+              { readonly name: 'MARITIME_NOT_ALLOWED'; readonly value: 'MARITIME_NOT_ALLOWED' },
+              { readonly name: 'SELF_TRANSFER'; readonly value: 'SELF_TRANSFER' },
+              { readonly name: 'INVALID_QUANTITY'; readonly value: 'INVALID_QUANTITY' },
+              { readonly name: 'XENO_PRIORITY_PENDING'; readonly value: 'XENO_PRIORITY_PENDING' },
+            ];
           };
         };
       };
@@ -623,7 +3804,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'Post';
+            readonly table: 'audit_logs';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
@@ -631,16 +3812,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'Post';
-            readonly column: 'updatedAt';
-          };
-          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
-          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
-        },
-        {
-          readonly ref: {
-            readonly namespace: 'public';
-            readonly table: 'User';
+            readonly table: 'calendar_events';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
@@ -648,11 +3820,125 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'User';
+            readonly table: 'conflict_notifications';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'district_severities';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'district_severities';
             readonly column: 'updatedAt';
           };
-          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
-          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'notifications';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'quarter_adjacencies';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'quarter_resources';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'quarter_resources';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'quarters';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'reservation_requests';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'resource_types';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'severity_history';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'system_config';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'transfer_requests';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'transit_approvals';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'users';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
         },
       ];
     };

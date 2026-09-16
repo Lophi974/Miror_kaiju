@@ -1,20 +1,12 @@
-import { createServer } from "node:http";
+import Express from "express";
 import "dotenv/config";
 
-import { listUsers } from "./prisma/users";
+const app = Express();
 
 const port = Number(process.env.PORT ?? 3000);
 
-createServer(async (_request, response) => {
-  try {
-    const users = await listUsers();
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ users }));
-  } catch (error) {
-    console.error("Failed to query users:", error);
-    response.writeHead(500, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "Could not query users yet." }));
-  }
-}).listen(port, "0.0.0.0", () => {
-  console.log(`Server running at http://localhost:${port}`);
+app.use(Express.json());
+
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
