@@ -46,14 +46,17 @@ const ZONES: Record<
   },
 };
 
-export default function ZoneMap() {
+export default function ZoneMap({
+  onPopupChange,
+}: {
+  onPopupChange: (isOpen: boolean) => void;
+}) {
   const [activeZone, setActiveZone] = useState<ZoneId | null>(null);
   const [hoverZone, setHoverZone] = useState<ZoneId | null>(null);
 
   return (
-    <main className="min-h-screen bg-[#11253C]">
-        <h1 className="font-mono text-5xl text-center font-bold">Carte Tokyork</h1>
-      <div className="relative w-full max-w-200 aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C]">
+    <main className="min-h-screen bg-[#11253C] pt-20">
+      <div className="relative w-full max-w-200 aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] ">
         {/* Carte */}
         <Image
           src="/MAP.png"
@@ -82,7 +85,10 @@ export default function ZoneMap() {
                 className="cursor-pointer transition-all duration-150"
                 onMouseEnter={() => setHoverZone(id)}
                 onMouseLeave={() => setHoverZone(null)}
-                onClick={() => setActiveZone(id)}
+                onClick={() => {
+                  setActiveZone(id);
+                  onPopupChange(true);
+                }}
               />
             );
           })}
@@ -104,7 +110,10 @@ export default function ZoneMap() {
                   {ZONES[activeZone].name}
                 </h2>
                 <button
-                  onClick={() => setActiveZone(null)}
+                  onClick={() => {
+                    setActiveZone(null);
+                    onPopupChange(false);
+                  }}
                   className="text-white/50 hover:text-white text-xl leading-none"
                 >
                   ✕
@@ -131,8 +140,11 @@ export default function ZoneMap() {
         {/* Overlay pour fermer */}
         {activeZone && (
           <div
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={() => setActiveZone(null)}
+            className="fixed inset-0 bg-black/0 z-40"
+            onClick={() => {
+              setActiveZone(null);
+              onPopupChange(false);
+            }}
           />
         )}
       </div>
