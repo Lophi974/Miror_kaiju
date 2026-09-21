@@ -1,4 +1,8 @@
-import { checkIfQuartersAreAdjacent } from "../services/transaction.service";
+import {
+  checkIfQuartersAreAdjacent,
+  getAdjacentQuarters,
+  checkIfQuarterHasEnoughResources,
+} from "../services/transaction.service";
 
 export async function transferResources(
   req: {
@@ -11,14 +15,35 @@ export async function transferResources(
   },
   res: any,
 ) {
-  const { quarterCode, resourceTypeId, requestedQuantity, targetQuarterCode } = req.body;
+  const { quarterCode, resourceTypeId, requestedQuantity, targetQuarterCode } =
+    req.body;
 
   if (!quarterCode || !resourceTypeId || requestedQuantity === undefined) {
     return res.status(400).json({ error: "Missing required parameters" });
   }
 
-  const isAdjacent = await checkIfQuartersAreAdjacent(quarterCode, targetQuarterCode);
+  const isAdjacent = await checkIfQuartersAreAdjacent(
+    quarterCode,
+    targetQuarterCode,
+  );
 
-  return res.status(200).json({ success: true, isAdjacent });
+  if (!isAdjacent) {
+    try {
+      const adjacentQuarters = await getAdjacentQuarters(quarterCode);
 
+      if (adjacentQuarters.length > 0) {
+        const adjacentQuarterWithEnoughResources = [];
+
+        for (const adjacent of adjacentQuarters) {
+            console.log("Checking adjacent quarter:", adjacent.quarterBId);
+            checkIfQuarterHasEnoughResources(adjacent.quarterBId, resourceTypeId, requestedQuantity)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching adjacent quarters:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  return;
 }

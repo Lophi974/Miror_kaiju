@@ -22,9 +22,6 @@ export async function checkIfQuartersAreAdjacent(
       throw new Error("One or both quarters not found");
     }
 
-    // On récupère toutes les lignes où quarter1 apparaît côté A, puis on
-    // filtre en mémoire — évite de deviner la bonne syntaxe de composition
-    // AND tant qu'elle n'est pas confirmée.
     const rowsFromA = await db.orm.public.QuarterAdjacency.where((a) =>
       a.quarterAId.eq(quarter1.id),
     ).all();
@@ -40,4 +37,51 @@ export async function checkIfQuartersAreAdjacent(
     console.error("Error checking quarter adjacency:", error);
     throw error;
   }
+}
+
+export async function getAdjacentQuarters(quarterCode: QuarterCode["quarterCode"]) {
+  try {
+    const quarter = await db.orm.public.Quarter.where((q) =>
+      q.code.eq(quarterCode)
+    ).first();
+
+    if (!quarter) {
+      throw new Error("Quarter not found");
+    }
+
+    const quarterId = quarter.id;
+
+    const adjacentRows = await db.orm.public.QuarterAdjacency.where((a) =>
+      a.quarterAId.eq(quarterId)
+    ).all();
+
+    return adjacentRows
+
+  } catch (error) {
+    console.error("Error getting adjacent quarters:", error);
+    throw error;
+  }
+}
+
+
+export async function checkIfQuarterHasEnoughResources(quarterId : string, resourceTypeId : string, requestedQuantity : number) {
+
+    try {
+
+        const quarterResource = await db.orm.public.QuarterResource.where((qr) =>
+            qr.quarterId.eq(quarterId as Parameters<typeof qr.quarterId.eq>[0])
+        ).all()
+
+        if (!quarterResource) {
+            throw new Error("Quarter resource not found");
+        }
+
+        // console.log("Quarter Resource:", quarterResource);
+
+    }
+    catch (error) {
+        console.error("Error checking if quarter has enough resources:", error);
+        throw error;
+    }
+
 }
