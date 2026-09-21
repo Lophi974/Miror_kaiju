@@ -15,7 +15,7 @@ if (isNaN(port)) {
 }
 
 app.use(cors({
-  origin: "http://localhost:9393",
+  origin: "http://localhost:9001",
   credentials: true,
 }));
 

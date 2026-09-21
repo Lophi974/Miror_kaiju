@@ -18,6 +18,9 @@ export async function loginUser(
       .json({ success: false, message: "Email and password are required" });
   }
 
+  console.log("loginUser email:", email);
+  console.log("loginUser password:", password);
+
   const { id, role, hashedPassword } = (await getUserByEmail(email)) || {};
 
   if (!id || !role || !hashedPassword) {

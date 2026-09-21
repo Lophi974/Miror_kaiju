@@ -12,12 +12,16 @@ type LoginResponse = {
 };
 
 export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
-  const response = await fetch("http://localhost:3000/api/auth/login", {
+
+  console.log("loginUser payload:", payload);
+
+  const response = await fetch("http://localhost:1919/api/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
+    credentials: "include",
   });
 
   const data = (await response.json()) as LoginResponse & { message?: string };
