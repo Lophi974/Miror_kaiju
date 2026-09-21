@@ -148,6 +148,24 @@ export default function ZoneMap({
           />
         )}
       </div>
+
+      <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
+        {[
+          { level: 1, color: "bg-green-500 hover:bg-green-400" },
+          { level: 2, color: "bg-lime-500 hover:bg-lime-400" },
+          { level: 3, color: "bg-yellow-500 hover:bg-yellow-400" },
+          { level: 4, color: "bg-orange-500 hover:bg-orange-400" },
+          { level: 5, color: "bg-red-600 hover:bg-red-500" },
+        ].map(({ level, color }) => (
+          <button
+            key={level}
+            type="button"
+            className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-colors ${color}`}
+          >
+            Niveau {level}
+          </button>
+        ))}
+      </div>
     </main>
   );
 }
