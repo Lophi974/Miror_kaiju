@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from "bcryptjs";
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -17,4 +17,4 @@ export async function hashPassword(password: string): Promise<string> {
         console.error("Error hashing password:", error);
         throw new Error("Failed to hash password");
     }
-}   
+}
