@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ZoneMap from "./test/page";
 import Calendrier from "./Calendrier/Calendrier";
+import DemandeButton from "./components/DemandeButton";
 
 export default function Home() {
 	const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -11,6 +12,7 @@ export default function Home() {
 		<>
 			<Calendrier visible={!isPopupOpen} />
 			<ZoneMap onPopupChange={setIsPopupOpen} />
+			<DemandeButton />
 		</>
 	);
 }
