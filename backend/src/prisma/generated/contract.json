@@ -888,6 +888,13 @@
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
+              },
+              "treshHoldPercent": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
@@ -1074,6 +1081,9 @@
                 },
                 "name": {
                   "column": "name"
+                },
+                "treshHoldPercent": {
+                  "column": "treshHoldPercent"
                 }
               },
               "namespaceId": "public",
@@ -3138,6 +3148,15 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "treshHoldPercent": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 30
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
                 }
               },
               "foreignKeys": [],
@@ -3889,7 +3908,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "9bea109ee5065f6a1dbb74b49e94505c55774da7b92f3ac00a48cb4dc6183337"
+    "storageHash": "f404822236475e6bddc6e180765cd5a919f408808e333a97079bfbc7d9a20cbd"
   },
   "execution": {
     "executionHash": "d0ad5c9dc86bb9861779584f0f08f91b659ede3311b0d99fdcd6a3ebbc667be3",

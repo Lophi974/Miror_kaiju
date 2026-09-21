@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'9bea109ee5065f6a1dbb74b49e94505c55774da7b92f3ac00a48cb4dc6183337'>;
+  StorageHashBase<'f404822236475e6bddc6e180765cd5a919f408808e333a97079bfbc7d9a20cbd'>;
 export type ExecutionHash =
   ExecutionHashBase<'d0ad5c9dc86bb9861779584f0f08f91b659ede3311b0d99fdcd6a3ebbc667be3'>;
 export type ProfileHash =
@@ -290,6 +290,7 @@ export type FieldOutputTypes = {
       readonly id: Char<36>;
       readonly code: 'A' | 'E' | 'W' | 'X' | 'Z';
       readonly name: CodecTypes['pg/text@1']['output'];
+      readonly treshHoldPercent: CodecTypes['pg/int4@1']['output'];
       readonly hasSeaAccess: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
@@ -437,6 +438,7 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['sql/char@1']['input'];
       readonly code: 'A' | 'E' | 'W' | 'X' | 'Z';
       readonly name: CodecTypes['pg/text@1']['input'];
+      readonly treshHoldPercent: CodecTypes['pg/int4@1']['input'];
       readonly hasSeaAccess: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -599,6 +601,7 @@ export type StorageColumnTypes = {
       readonly hasSeaAccess: CodecTypes['pg/bool@1']['output'];
       readonly id: Char<36>;
       readonly name: CodecTypes['pg/text@1']['output'];
+      readonly treshHoldPercent: CodecTypes['pg/int4@1']['output'];
     };
     readonly reservation_requests: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -746,6 +749,7 @@ export type StorageColumnInputTypes = {
       readonly hasSeaAccess: CodecTypes['pg/bool@1']['input'];
       readonly id: CodecTypes['sql/char@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
+      readonly treshHoldPercent: CodecTypes['pg/int4@1']['input'];
     };
     readonly reservation_requests: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -843,6 +847,7 @@ export namespace Models {
     id: Char<36>;
     code: 'A' | 'E' | 'W' | 'X' | 'Z';
     name: CodecTypes['pg/text@1']['output'];
+    treshHoldPercent: CodecTypes['pg/int4@1']['output'];
     hasSeaAccess: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     users: public_User[];
@@ -1586,6 +1591,15 @@ type ContractBase = Omit<
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
+                };
+                readonly treshHoldPercent: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 30>;
+                  };
                 };
                 readonly hasSeaAccess: {
                   readonly nativeType: 'bool';
@@ -2610,6 +2624,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly treshHoldPercent: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
               readonly hasSeaAccess: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
@@ -2750,6 +2768,7 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly code: { readonly column: 'code' };
                 readonly name: { readonly column: 'name' };
+                readonly treshHoldPercent: { readonly column: 'treshHoldPercent' };
                 readonly hasSeaAccess: { readonly column: 'hasSeaAccess' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
