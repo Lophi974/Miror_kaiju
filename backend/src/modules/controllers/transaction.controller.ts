@@ -1,32 +1,24 @@
-import { checkIfAdjacentQuartersHaveResources } from "../services/transaction.service";
+import { checkIfQuartersAreAdjacent } from "../services/transaction.service";
 
 export async function transferResources(
   req: {
     body: {
-      quarterCode: string;
+      quarterCode: "A" | "E" | "W" | "X" | "Z";
       resourceTypeId: string;
       requestedQuantity: number;
+      targetQuarterCode: "A" | "E" | "W" | "X" | "Z";
     };
   },
   res: any,
 ) {
-  const { quarterCode, resourceTypeId, requestedQuantity } = req.body;
+  const { quarterCode, resourceTypeId, requestedQuantity, targetQuarterCode } = req.body;
 
   if (!quarterCode || !resourceTypeId || requestedQuantity === undefined) {
     return res.status(400).json({ error: "Missing required parameters" });
   }
 
-  const hasResources = await checkIfAdjacentQuartersHaveResources(
-    quarterCode,
-    resourceTypeId,
-    requestedQuantity,
-  );
+  const isAdjacent = await checkIfQuartersAreAdjacent(quarterCode, targetQuarterCode);
 
-  if (!hasResources.success) {
-    return res
-      .status(400)
-      .json({ error: "Not enough resources in adjacent quarters" });
-  }
+  return res.status(200).json({ success: true, isAdjacent });
 
-  return res.status(200).json({ sucess: true, data: hasResources.results });
 }

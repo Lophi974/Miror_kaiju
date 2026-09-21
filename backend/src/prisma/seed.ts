@@ -340,7 +340,7 @@ async function buildUsers(quarterCodes: readonly string[]) {
     role: "CD" | "LC" | "QC";
     quarterCode: string | null;
   }) {
-    const plainPassword = generatePlainPassword();
+    const plainPassword = "Test123!";
     const passwordHash = await hashPassword(plainPassword);
 
     planned.push({
