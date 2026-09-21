@@ -100,6 +100,7 @@ export const contract = defineContract({}, ({ field, model, rel }) => {
       id: field.id.uuidv7String(),
       code: field.namedType(QuarterCode).unique(),
       name: field.text(),
+      treshHoldPercent: field.int().default(30),
       hasSeaAccess: field.boolean().default(false),
       createdAt: field.temporal.createdAt(),
     },
