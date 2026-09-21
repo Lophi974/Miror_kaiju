@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { getUserByEmail } from "../services/auth.service";
 import bcrypt from "bcryptjs";
 import { createToken } from "../../util/createToken";
-
 dotenv.config();
 
 const PEPPER = process.env.PEPPER;
