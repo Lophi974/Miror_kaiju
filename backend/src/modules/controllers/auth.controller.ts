@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { getUserByEmail } from "../services/auth.service";
 import bcrypt from "bcryptjs";
 import { createToken } from "../../util/createToken";
-
 dotenv.config();
 
 const PEPPER = process.env.PEPPER;
@@ -18,6 +17,9 @@ export async function loginUser(
       .status(400)
       .json({ success: false, message: "Email and password are required" });
   }
+
+  console.log("loginUser email:", email);
+  console.log("loginUser password:", password);
 
   const { id, role, hashedPassword } = (await getUserByEmail(email)) || {};
 

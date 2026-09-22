@@ -1,5 +1,8 @@
 import { Router } from "express";
+import { transferResources } from "../controllers/transaction.controller";
 
 const router = Router();
 
-export default router;
+router.post("/transfer", transferResources);
+
+export default router;  
