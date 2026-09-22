@@ -1,52 +1,33 @@
-'use client';
+export default function OperationalCalendar({
+  visible = true,
+}: {
+  visible?: boolean;
+}) {
+  const events = [
+    { time: "09:00", color: "bg-red-500", title: "Mission de reconnaissance - Est" },
+    { time: "11:30", color: "bg-blue-500", title: "Transfert de ressources - Centre" },
+    { time: "14:00", color: "bg-yellow-500", title: "Maintenance - Générateurs" },
+    { time: "17:00", color: "bg-green-500", title: "Réunion d'équipes - QC" },
+  ];
 
-const monthFormatter = new Intl.DateTimeFormat('fr-FR', {
-  month: 'long',
-  year: 'numeric',
-});
-
-export default function Calendrier() {
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const startingDay = (firstDay.getDay() + 6) % 7;
-  const days = Array.from({ length: startingDay + daysInMonth }, (_, index) =>
-    index < startingDay ? null : index - startingDay + 1,
-  );
+  if (!visible) return null;
 
   return (
-    <section className="bg-[#11253C] px-4 py-8 text-white">
-      <div className="mx-auto max-w-2xl rounded-xl border border-[#2a4965] bg-[#061A2C] p-5 shadow-xl">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-2xl font-bold capitalize">{monthFormatter.format(today)}</h2>
-          <span className="rounded-full bg-[#1d4e8b] px-3 py-1 text-sm font-semibold">
-            Aujourd'hui
-          </span>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-white/50">
-          {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
-            <span key={day}>{day}</span>
-          ))}
-        </div>
-
-        <div className="mt-3 grid grid-cols-7 gap-2">
-          {days.map((day, index) => (
-            <div
-              key={day === null ? `empty-${index}` : day}
-              className={`flex aspect-square items-center justify-center rounded-lg text-sm ${
-                day === today.getDate()
-                  ? 'bg-[#eab308] font-bold text-[#061A2C]'
-                  : day === null
-                    ? ''
-                    : 'bg-white/5 text-white/80'
-              }`}
-            >
-              {day}
-            </div>
-          ))}
-        </div>
+    <div className="fixed bottom-6 right-6 z-30 w-96 bg-[#0a1420] border-3 border-[#1b3a55] rounded-xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-white text-xl font-bold">Calendrier opérationnel</h2>
+        <span className="text-white/40">Septembre</span>
       </div>
-    </section>
+
+      <div className="space-y-5">
+        {events.map((event, index) => (
+          <div key={index} className="flex items-center gap-4">
+            <span className="text-white/50 w-14">{event.time}</span>
+            <span className={`w-3 h-3 rounded-full ${event.color}`} />
+            <span className="text-white">{event.title}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
