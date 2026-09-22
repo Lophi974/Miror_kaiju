@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1919";
 
 interface Quartier {
   id: string;
@@ -13,9 +13,27 @@ interface Quartier {
 }
 
 interface Ressource {
+
   id: string;
-  name: string;
+  initialQuantity: number;
+  currentQuantity: number;
+  resourceType: {
+    id: string;
+    code: string;
+    name: string;
+    unit: string;
+  };
   quarterId: string;
+  quarter:{
+    id: string;
+    code: string;
+    name: string;
+    hasSeaAccess: boolean;
+    treshHoldPercent: number;
+  }
+  resourceTypeId: string;
+  updatedAt: string;
+
 }
 
 export default function DemandeButton() {
@@ -44,6 +62,7 @@ export default function DemandeButton() {
     fetch(API_URL + "/api/ressources/quarters", { credentials: "include" })
       .then(async (res) => {
         const body = await res.json();
+        console.log("[QUARTERS] Response body:", body);
         if (!res.ok) throw new Error("Erreur lors du chargement des quartiers");
         return body;
       })
@@ -78,6 +97,8 @@ export default function DemandeButton() {
         }
 
         const body = await res.json();
+
+        console.log("[RESSOURCES] Response body:", body);
 
         if (!res.ok || !body.success) {
           throw new Error(body.message || "Erreur lors du chargement des ressources");
@@ -130,6 +151,8 @@ export default function DemandeButton() {
       setRessourcesError(err instanceof Error ? err.message : "Erreur inconnue");
     }
   };
+
+  console.log("test", ressources)
 
   return (
     <>
@@ -249,7 +272,7 @@ export default function DemandeButton() {
                             onChange={() => toggleRessource(r.id)}
                             className="accent-emerald-500"
                           />
-                          {r.name}
+                          {r.resourceType.name}
                         </label>
                       ))}
                     </div>
