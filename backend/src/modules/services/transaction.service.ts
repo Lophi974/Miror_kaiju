@@ -1,154 +1,239 @@
 import { db } from "../../prisma/db.ts";
 
-type RouteType = "DIRECT" | "TRANSIT" | "MARITIME";
+type QuarterCode = "A" | "E" | "W" | "X" | "Z";
+type OfficerRole = "QC" | "LC" | "CD";
 
-type QuarterId = Awaited<ReturnType<typeof db.orm.public.Quarter.all>>[number]["id"];
+// --------------------------------------------------------------------------
+// HELPER
+// --------------------------------------------------------------------------
 
-interface QuarterCandidate {
-  id: QuarterId;
-  code: string;
-  name: string;
-  treshHoldPercent: number;
-  hasSeaAccess: boolean;
+// Les champs uuidString() du contract sont typés en Char<36>, un type nominal
+// qui n'existe qu'au niveau TS (à l'exécution c'est une string classique).
+// Ce helper documente l'intention et centralise le cast en un seul endroit
+// plutôt que de le répéter partout avec des `as any`.
+// Si l'import `Char` échoue (nom différent selon la version installée),
+// remplacer par: function uuid(id: string) { return id as any; }
+function uuid(id: string): any {
+  return id as unknown as any;
 }
 
-interface QuarterAvailability {
-  quarterId: string;
-  quarterCode: string;
-  quarterName: string;
-  routeType: RouteType;
-  transitPath: string[];
-  requiresXenoPriorityCheck: boolean;
-  currentQuantity: number;
-  minRetention: number;
-  availableSurplus: number;
-  hasEnough: boolean;
+function uuidList(ids: string[]): any[] {
+  return ids.map(uuid);
 }
 
-export async function checkIfAdjacentQuartersHaveResources(
-  quarterCode: string,
+// --------------------------------------------------------------------------
+// QUARTIERS & ADJACENCE
+// --------------------------------------------------------------------------
+
+export async function getQuarterByCode(code: QuarterCode) {
+  return db.orm.public.Quarter.where((q) => q.code.eq(code)).first();
+}
+
+export async function checkIfQuartersAreAdjacent(
+  quarter1Code: QuarterCode,
+  quarter2Code: QuarterCode,
+): Promise<boolean> {
+  if (quarter1Code === quarter2Code) return false;
+
+  const quarter1 = await getQuarterByCode(quarter1Code);
+  const quarter2 = await getQuarterByCode(quarter2Code);
+
+  if (!quarter1 || !quarter2) {
+    throw new Error("One or both quarters not found");
+  }
+
+  // L'adjacence est seedée dans les deux sens (cf. contract.ts), donc un seul
+  // sens suffit en théorie ; on garde les deux par sécurité contre un seed
+  // incomplet.
+  const rowsFromA = await db.orm.public.QuarterAdjacency.where((a) =>
+    a.quarterAId.eq(uuid(quarter1.id)),
+  ).all();
+  const rowsFromB = await db.orm.public.QuarterAdjacency.where((a) =>
+    a.quarterAId.eq(uuid(quarter2.id)),
+  ).all();
+
+  const forwardMatch = rowsFromA.some((r) => r.quarterBId === quarter2.id);
+  const backwardMatch = rowsFromB.some((r) => r.quarterBId === quarter1.id);
+
+  return forwardMatch || backwardMatch;
+}
+
+// Retourne les Quarter complets (pas les lignes d'adjacence brutes), pour
+// pouvoir utiliser .code et .id directement côté controller.
+export async function getAdjacentQuarters(quarterCode: QuarterCode) {
+  const quarter = await getQuarterByCode(quarterCode);
+  if (!quarter) throw new Error("Quarter not found");
+
+  const rows = await db.orm.public.QuarterAdjacency.where((a) =>
+    a.quarterAId.eq(uuid(quarter.id)),
+  ).all();
+
+  const adjacentIds = rows.map((r) => r.quarterBId);
+  if (adjacentIds.length === 0) return [];
+
+  return db.orm.public.Quarter.where((q) => q.id.in(uuidList(adjacentIds))).all();
+}
+
+// Cherche un quartier commun adjacent aux deux (pour un transit à un saut).
+// Vu la topologie (X borde tout le monde), c'est presque toujours X, mais on
+// ne le hardcode pas : on privilégie X si trouvé, sinon un autre commun.
+export async function findCommonAdjacentQuarter(
+  quarter1Code: QuarterCode,
+  quarter2Code: QuarterCode,
+) {
+  const [adjacentTo1, adjacentTo2] = await Promise.all([
+    getAdjacentQuarters(quarter1Code),
+    getAdjacentQuarters(quarter2Code),
+  ]);
+
+  const idsAdjacentTo2 = new Set(adjacentTo2.map((q) => q.id));
+  const common = adjacentTo1.filter((q) => idsAdjacentTo2.has(q.id));
+
+  return common.find((q) => q.code === "X") ?? common[0] ?? null;
+}
+
+export async function bothHaveSeaAccess(
+  quarter1Code: QuarterCode,
+  quarter2Code: QuarterCode,
+): Promise<boolean> {
+  const [q1, q2] = await Promise.all([
+    getQuarterByCode(quarter1Code),
+    getQuarterByCode(quarter2Code),
+  ]);
+  return Boolean(q1?.hasSeaAccess && q2?.hasSeaAccess);
+}
+
+// --------------------------------------------------------------------------
+// RESSOURCES & SEUIL DE RÉTENTION
+// --------------------------------------------------------------------------
+
+export async function getSystemConfig() {
+  const config = await db.orm.public.SystemConfig.where((c) => c.id.eq(1)).first();
+  if (!config) throw new Error("System config not found");
+  return config;
+}
+
+export async function getQuarterResource(quarterId: string, resourceTypeId: string) {
+  return db.orm.public.QuarterResource
+    .where((qr) => qr.quarterId.eq(uuid(quarterId)))
+    .where((qr) => qr.resourceTypeId.eq(uuid(resourceTypeId)))
+    .first();
+}
+
+// Le seuil se base sur initialQuantity (règle: "30% des ressources
+// initiales"), avec le retentionPercent global (SystemConfig), abaissable à
+// 15% par le CD au niveau 5.
+export async function checkIfQuarterHasEnoughResources(
+  quarterId: string,
   resourceTypeId: string,
   requestedQuantity: number,
-) {
-  const quarter = await db.orm.public.Quarter.where((q) =>
-    q.code.eq(quarterCode as Parameters<typeof q.code.eq>[0]),
-  ).first();
-
-  if (!quarter) {
-    return { success: false, message: "Quarter not found" } as const;
+): Promise<boolean> {
+  const quarterResource = await getQuarterResource(quarterId, resourceTypeId);
+  if (!quarterResource) {
+    throw new Error("Resource type not found in quarter");
   }
 
-  const allQuarters = await db.orm.public.Quarter.all();
-  const allAdjacencies = await db.orm.public.QuarterAdjacency.all();
-
-  const quarterById = new Map<QuarterId, QuarterCandidate>(
-    allQuarters.map((q) => [
-      q.id,
-      {
-        id: q.id,
-        code: q.code,
-        name: q.name,
-        treshHoldPercent: q.treshHoldPercent,
-        hasSeaAccess: q.hasSeaAccess,
-      },
-    ]),
+  const config = await getSystemConfig();
+  const minRetention = Math.ceil(
+    (quarterResource.initialQuantity * config.retentionPercent) / 100,
   );
 
-  const landAdjacency = new Map<QuarterId, Set<QuarterId>>();
-  for (const q of allQuarters) landAdjacency.set(q.id, new Set());
-  for (const a of allAdjacencies) {
-    landAdjacency.get(a.quarterAId)?.add(a.quarterBId);
-    landAdjacency.get(a.quarterBId)?.add(a.quarterAId);
+  const available = quarterResource.currentQuantity - minRetention;
+
+  return requestedQuantity > 0 && requestedQuantity <= available;
+}
+
+// --------------------------------------------------------------------------
+// SÉVÉRITÉ / NIVEAU
+// --------------------------------------------------------------------------
+
+// Tous les quartiers partagent le même niveau en pratique : on lit celui du
+// quartier demandeur (le "premier" quartier de la requête).
+export async function getQuarterSeverityLevel(quarterId: string): Promise<number> {
+  const severity = await db.orm.public.DistrictSeverity.where((s) =>
+    s.quarterId.eq(uuid(quarterId)),
+  ).first();
+  if (!severity) throw new Error("Severity not found for quarter");
+  return severity.level;
+}
+
+// --------------------------------------------------------------------------
+// PERMISSIONS (matrice rôles × niveaux)
+// --------------------------------------------------------------------------
+
+type TransferAction = "RESERVE_OWN" | "REQUEST_ADJACENT_TRANSFER" | "ORGANIZE_TRANSIT";
+
+export function canPerformAction(
+  role: OfficerRole,
+  action: TransferAction,
+  level: number,
+): boolean {
+  switch (action) {
+    case "RESERVE_OWN":
+      // Lv2-5 : QC uniquement.
+      return level >= 2 && role === "QC";
+    case "REQUEST_ADJACENT_TRANSFER":
+      // Lv3 : QC · Lv4 : QC, LC · Lv5 : tous.
+      if (level === 3) return role === "QC";
+      if (level === 4) return role === "QC" || role === "LC";
+      if (level === 5) return true;
+      return false;
+    case "ORGANIZE_TRANSIT":
+      // Lv4 : LC · Lv5 : LC, CD.
+      if (level === 4) return role === "LC";
+      if (level === 5) return role === "LC" || role === "CD";
+      return false;
+    default:
+      return false;
   }
+}
 
-  const directNeighbourIds = landAdjacency.get(quarter.id) ?? new Set<QuarterId>();
+// --------------------------------------------------------------------------
+// ÉCRITURES
+// --------------------------------------------------------------------------
 
-  function shortestLandPath(fromId: QuarterId, toId: QuarterId): string[] | null {
-    if (fromId === toId) return [];
-    const visited = new Set<QuarterId>([fromId]);
-    const queue: { id: QuarterId; path: QuarterId[] }[] = [{ id: fromId, path: [] }];
-    while (queue.length > 0) {
-      const { id, path } = queue.shift()!;
-      for (const neighbourId of landAdjacency.get(id) ?? []) {
-        if (visited.has(neighbourId)) continue;
-        const newPath = [...path, neighbourId];
-        if (neighbourId === toId) {
-          return newPath.slice(0, -1).map((pid) => quarterById.get(pid)!.code);
-        }
-        visited.add(neighbourId);
-        queue.push({ id: neighbourId, path: newPath });
-      }
-    }
-    return null;
-  }
+export async function createReservationRequest(params: {
+  quarterId: string;
+  resourceTypeId: string;
+  quantity: number;
+  requestedById: string;
+}) {
+  return db.orm.public.ReservationRequest.create({
+    quarterId: uuid(params.quarterId),
+    resourceTypeId: uuid(params.resourceTypeId),
+    quantity: params.quantity,
+    requestedById: uuid(params.requestedById),
+  });
+}
 
-  const requesterHasSea = quarter.hasSeaAccess;
+export async function createTransferRequest(params: {
+  requestingQuarterId: string;
+  supplyingQuarterId: string;
+  resourceTypeId: string;
+  quantity: number;
+  routeType: "DIRECT" | "TRANSIT" | "MARITIME";
+  disasterLevelAtRequest: number;
+  createdById: string;
+}) {
+  return db.orm.public.TransferRequest.create({
+    requestingQuarterId: uuid(params.requestingQuarterId),
+    supplyingQuarterId: uuid(params.supplyingQuarterId),
+    resourceTypeId: uuid(params.resourceTypeId),
+    quantity: params.quantity,
+    routeType: params.routeType,
+    disasterLevelAtRequest: params.disasterLevelAtRequest,
+    createdById: uuid(params.createdById),
+  });
+}
 
-  type Candidate = { quarter: QuarterCandidate; routeType: RouteType; transitPath: string[] };
-  const candidates: Candidate[] = [];
-
-  for (const [id, q] of quarterById) {
-    if (id === quarter.id) continue;
-
-    if (directNeighbourIds.has(id)) {
-      candidates.push({ quarter: q, routeType: "DIRECT", transitPath: [] });
-      continue;
-    }
-
-    if (requesterHasSea && q.hasSeaAccess) {
-      candidates.push({ quarter: q, routeType: "MARITIME", transitPath: [] });
-      continue;
-    }
-
-    const path = shortestLandPath(quarter.id, id);
-    candidates.push({
-      quarter: q,
-      routeType: "TRANSIT",
-      transitPath: path ?? [],
-    });
-  }
-
-  const resources = await db.orm.public.QuarterResource.where((r) =>
-    r.resourceTypeId.eq(resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0]),
-  ).all();
-  const resourceByQuarterId = new Map(resources.map((r) => [r.quarterId, r]));
-
-  const results: QuarterAvailability[] = [];
-  for (const candidate of candidates) {
-    const resource = resourceByQuarterId.get(candidate.quarter.id);
-    if (!resource) continue;
-
-    const minRetention = Math.ceil(
-      (resource.initialQuantity * candidate.quarter.treshHoldPercent) / 100,
-    );
-    const availableSurplus = resource.currentQuantity - minRetention;
-
-    results.push({
-      quarterId: String(candidate.quarter.id),
-      quarterCode: candidate.quarter.code,
-      quarterName: candidate.quarter.name,
-      routeType: candidate.routeType,
-      transitPath: candidate.transitPath,
-      requiresXenoPriorityCheck:
-        candidate.quarter.code === "X" || candidate.transitPath.includes("X"),
-      currentQuantity: resource.currentQuantity,
-      minRetention,
-      availableSurplus,
-      hasEnough: availableSurplus >= requestedQuantity,
-    });
-  }
-
-  const directWithEnough = results.filter((r) => r.routeType === "DIRECT" && r.hasEnough);
-  const fallbackNeeded = directWithEnough.length === 0;
-
-  const eligible = fallbackNeeded
-    ? results
-    : results.filter((r) => r.routeType === "DIRECT");
-
-  return {
-    success: true,
-    fallbackToNonAdjacent: fallbackNeeded,
-    results: eligible,
-    anyHasEnough: eligible.some((r) => r.hasEnough),
-  } as const;
+export async function createTransitApproval(params: {
+  transferRequestId: string;
+  transitQuarterId: string;
+  order: number;
+}) {
+  return db.orm.public.TransitApproval.create({
+    transferRequestId: uuid(params.transferRequestId),
+    transitQuarterId: uuid(params.transitQuarterId),
+    order: params.order,
+  });
 }

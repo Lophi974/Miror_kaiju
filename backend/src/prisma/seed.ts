@@ -114,6 +114,9 @@ const RESOURCES_SEED = [
 
 const QC_PER_QUARTER = 2;
 
+// Niveau de sévérité initial appliqué à chaque quartier au seed (Emergency).
+const INITIAL_SEVERITY_LEVEL = 3;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -142,7 +145,9 @@ type CredentialRow = {
 // les id/quarterId/resourceTypeId conservent leur type branded (Char<36>)
 // au lieu d'être aplatis en `string` par une interface écrite à la main.
 type QuarterRow = Awaited<ReturnType<typeof db.orm.public.Quarter.all>>[number];
-type ResourceTypeRow = Awaited<ReturnType<typeof db.orm.public.ResourceType.all>>[number];
+type ResourceTypeRow = Awaited<
+  ReturnType<typeof db.orm.public.ResourceType.all>
+>[number];
 
 // ---------------------------------------------------------------------------
 // Étape 1 : s'assurer que les 5 quartiers existent (idempotent)
@@ -279,7 +284,8 @@ async function ensureQuarterResources(
       planned.push({
         quarterCode,
         resourceCode: resource.code,
-        quantity: resource.byQuarter[quarterCode as keyof typeof resource.byQuarter],
+        quantity:
+          resource.byQuarter[quarterCode as keyof typeof resource.byQuarter],
       });
     }
   }
@@ -317,6 +323,47 @@ async function ensureQuarterResources(
 }
 
 // ---------------------------------------------------------------------------
+// Étape 1quinquies : s'assurer que chaque quartier a un DistrictSeverity
+// (idempotent). Niveau initial fixé à INITIAL_SEVERITY_LEVEL (3, Emergency)
+// pour tous les quartiers.
+// ---------------------------------------------------------------------------
+
+async function ensureDistrictSeverities(
+  quarters: Map<string, QuarterRow>,
+): Promise<void> {
+  const existing = await db.orm.public.DistrictSeverity.all();
+  const existingQuarterIds = new Set(existing.map((s) => s.quarterId));
+
+  const missing = QUARTERS_SEED.filter(({ code }) => {
+    const quarter = quarters.get(code);
+    if (!quarter) {
+      throw new Error(
+        `DistrictSeverity ${code} impossible : quartier introuvable après ensureQuarters()`,
+      );
+    }
+    return !existingQuarterIds.has(quarter.id);
+  });
+
+  if (missing.length === 0) {
+    console.log("DistrictSeverity déjà en place, rien à créer.");
+    return;
+  }
+
+  console.log(
+    `Création de ${missing.length} DistrictSeverity (level ${INITIAL_SEVERITY_LEVEL})...`,
+  );
+
+  // Construction directe dans createAll() pour conserver le typage branded
+  // de quarterId, comme pour les adjacences et les ressources.
+  await db.orm.public.DistrictSeverity.createAll(
+    missing.map(({ code }) => ({
+      quarterId: quarters.get(code)!.id,
+      level: INITIAL_SEVERITY_LEVEL,
+    })),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Étape 2 : construire la liste des utilisateurs à créer (données "plates",
 // sans lien direct vers le type branded de l'id -- on ne le récupère qu'au
 // moment de l'insertion, voir insertUsers()).
@@ -340,7 +387,7 @@ async function buildUsers(quarterCodes: readonly string[]) {
     role: "CD" | "LC" | "QC";
     quarterCode: string | null;
   }) {
-    const plainPassword = generatePlainPassword();
+    const plainPassword = "Test123!";
     const passwordHash = await hashPassword(plainPassword);
 
     planned.push({
@@ -368,20 +415,19 @@ async function buildUsers(quarterCodes: readonly string[]) {
     quarterCode: null,
   });
 
-  // --- Logistics Coordinator + Quarter Coordinators, par quartier ---
+  // --- Logistics Coordinator : un seul, portée ville entière, pas de quartier ---
+  await addUser({
+    email: `lc@${EMAIL_DOMAIN}`,
+    name: "Coordinateur Logistique",
+    role: "LC",
+    quarterCode: null,
+  });
+
+  // --- Quarter Coordinators, par quartier ---
   for (const { code, name } of QUARTERS_SEED) {
     if (!quarterCodes.includes(code)) {
       throw new Error(`Quartier ${code} introuvable après ensureQuarters()`);
     }
-
-    // LC : portée multi-quartiers -> pas de quarterId, conformément à la
-    // règle du contrat ("doit rester null pour LC/CD").
-    await addUser({
-      email: `lc.${slugify(code)}@${EMAIL_DOMAIN}`,
-      name: `Coordinateur Logistique (${name})`,
-      role: "LC",
-      quarterCode: null,
-    });
 
     // QC : deux par quartier, scope = ce quartier uniquement.
     for (let i = 1; i <= QC_PER_QUARTER; i++) {
@@ -467,6 +513,8 @@ async function main() {
   const resourceTypes = await ensureResourceTypes();
   await ensureQuarterResources(quarters, resourceTypes);
 
+  await ensureDistrictSeverities(quarters);
+
   const { planned, credentials } = await buildUsers(
     Array.from(quarters.keys()),
   );
@@ -477,7 +525,7 @@ async function main() {
 
   console.log(`${planned.length} utilisateurs créés :`);
   console.log(`  - 1 CD`);
-  console.log(`  - ${QUARTERS_SEED.length} LC (1 par quartier)`);
+  console.log(`  - 1 LC (portée ville entière)`);
   console.log(
     `  - ${QUARTERS_SEED.length * QC_PER_QUARTER} QC (${QC_PER_QUARTER} par quartier)`,
   );
@@ -486,6 +534,9 @@ async function main() {
   );
   console.log(
     `  - ${RESOURCES_SEED.length} types de ressources × ${QUARTERS_SEED.length} quartiers = ${RESOURCES_SEED.length * QUARTERS_SEED.length} lignes de distribution`,
+  );
+  console.log(
+    `  - ${QUARTERS_SEED.length} DistrictSeverity (level ${INITIAL_SEVERITY_LEVEL})`,
   );
 
   await writeCredentialsFile(credentials);
