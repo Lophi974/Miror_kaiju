@@ -6,8 +6,12 @@ import ressourceRouter from "./modules/routes/ressource.route";
 import severityRouter from "./modules/routes/severity.route";
 import transactionRouter from "./modules/routes/transaction.route";
 import cors from "cors";
+import { Server } from 'socket.io';
+import { createServer } from 'node:http';
 
 const app = Express();
+const server = createServer(app);
+const io = new Server(server);
 
 const port = Number(process.env.PORT);
 if (isNaN(port)) {
@@ -28,6 +32,10 @@ app.use("/api/ressources", ressourceRouter);
 app.use("/api/severities", severityRouter);
 app.use("/api/transactions", transactionRouter);
 
-app.listen(port, () => {
+io.on('connection', (socket) => {
+  console.log('a user connected');
+});
+
+server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });

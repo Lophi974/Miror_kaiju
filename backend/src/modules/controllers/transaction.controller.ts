@@ -23,13 +23,19 @@ export async function transferResources(
       requestedQuantity: number;
       targetQuarterCode: QuarterCode;
       role: OfficerRole;
-      userId: string; // officier à l'origine de l'action (auditée sur la requête)
+      userId: string;
     };
   },
   res: any,
 ) {
-  const { quarterCode, resourceTypeId, requestedQuantity, targetQuarterCode, role, userId } =
-    req.body;
+  const {
+    quarterCode,
+    resourceTypeId,
+    requestedQuantity,
+    targetQuarterCode,
+    role,
+    userId,
+  } = req.body;
 
   if (
     !quarterCode ||
@@ -53,7 +59,9 @@ export async function transferResources(
   try {
     const requestingQuarter = await getQuarterByCode(quarterCode);
     if (!requestingQuarter) {
-      return res.status(404).json({ error: `Quarter ${quarterCode} not found` });
+      return res
+        .status(404)
+        .json({ error: `Quarter ${quarterCode} not found` });
     }
 
     // Niveau lu depuis le quartier demandeur (tous les quartiers partagent
@@ -76,7 +84,8 @@ export async function transferResources(
         return res.status(403).json({
           success: false,
           code: "PERMISSION_DENIED",
-          message: "Seul un Quarter Coordinator peut réserver dans son propre quartier.",
+          message:
+            "Seul un Quarter Coordinator peut réserver dans son propre quartier.",
         });
       }
 
@@ -90,7 +99,8 @@ export async function transferResources(
         return res.status(409).json({
           success: false,
           code: "BELOW_RETENTION_THRESHOLD",
-          message: "Cette réservation ferait passer le quartier sous son seuil de rétention.",
+          message:
+            "Cette réservation ferait passer le quartier sous son seuil de rétention.",
         });
       }
 
@@ -111,16 +121,22 @@ export async function transferResources(
       return res.status(403).json({
         success: false,
         code: "LEVEL_TOO_LOW",
-        message: "Les transferts inter-quartiers nécessitent au moins le Niveau 3 (Emergency).",
+        message:
+          "Les transferts inter-quartiers nécessitent au moins le Niveau 3 (Emergency).",
       });
     }
 
     const targetQuarter = await getQuarterByCode(targetQuarterCode);
     if (!targetQuarter) {
-      return res.status(404).json({ error: `Quarter ${targetQuarterCode} not found` });
+      return res
+        .status(404)
+        .json({ error: `Quarter ${targetQuarterCode} not found` });
     }
 
-    const isAdjacent = await checkIfQuartersAreAdjacent(quarterCode, targetQuarterCode);
+    const isAdjacent = await checkIfQuartersAreAdjacent(
+      quarterCode,
+      targetQuarterCode,
+    );
 
     // ---- 2a. Quartiers adjacents : transfert direct ----
     if (isAdjacent) {
@@ -128,7 +144,8 @@ export async function transferResources(
         return res.status(403).json({
           success: false,
           code: "PERMISSION_DENIED",
-          message: "Ce rôle ne peut pas demander de transfert adjacent à ce niveau.",
+          message:
+            "Ce rôle ne peut pas demander de transfert adjacent à ce niveau.",
         });
       }
 
@@ -165,7 +182,8 @@ export async function transferResources(
       return res.status(403).json({
         success: false,
         code: "LEVEL_TOO_LOW",
-        message: "Les transferts vers un quartier non-adjacent nécessitent au moins le Niveau 4 (Critical).",
+        message:
+          "Les transferts vers un quartier non-adjacent nécessitent au moins le Niveau 4 (Critical).",
       });
     }
 
@@ -173,7 +191,8 @@ export async function transferResources(
       return res.status(403).json({
         success: false,
         code: "PERMISSION_DENIED",
-        message: "Seul le Logistics Coordinator (ou le City Director au Niveau 5) peut organiser un transit.",
+        message:
+          "Seul le Logistics Coordinator (ou le City Director au Niveau 5) peut organiser un transit.",
       });
     }
 
@@ -213,7 +232,10 @@ export async function transferResources(
 
     // Route maritime possible uniquement si les deux quartiers ont accès à
     // la mer (Echo, Xeno, Zion) — proposée comme alternative, délai doublé.
-    const canUseMaritime = await bothHaveSeaAccess(quarterCode, targetQuarterCode);
+    const canUseMaritime = await bothHaveSeaAccess(
+      quarterCode,
+      targetQuarterCode,
+    );
 
     if (canUseMaritime) {
       const transfer = await createTransferRequest({
@@ -228,11 +250,18 @@ export async function transferResources(
 
       return res
         .status(201)
-        .json({ success: true, transfer, note: "Route maritime : délai de livraison doublé." });
+        .json({
+          success: true,
+          transfer,
+          note: "Route maritime : délai de livraison doublé.",
+        });
     }
 
     // Sinon, transit via un quartier intermédiaire commun (souvent Xeno).
-    const transitQuarter = await findCommonAdjacentQuarter(quarterCode, targetQuarterCode);
+    const transitQuarter = await findCommonAdjacentQuarter(
+      quarterCode,
+      targetQuarterCode,
+    );
 
     if (!transitQuarter) {
       return res.status(409).json({
