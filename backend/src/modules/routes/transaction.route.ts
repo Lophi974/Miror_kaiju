@@ -5,4 +5,4 @@ const router = Router();
 
 router.post("/transfer", transferResources);
 
-export default router;  
+export default router;
