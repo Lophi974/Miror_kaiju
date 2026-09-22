@@ -1,3 +1,4 @@
+import e from "express";
 import { db } from "../../prisma/db.ts";
 
 export async function getRessourcesByQuarterIdService(quarterId: string) {
@@ -13,5 +14,15 @@ export async function getRessourcesByQuarterIdService(quarterId: string) {
   } catch (error) {
     console.error("Error fetching ressources by quarter ID:", error);
     throw new Error("Failed to fetch ressources");
+  }
+}
+
+export async function getAllQuarterService() {
+  try {
+    const quarters = await db.orm.public.Quarter.all();
+    return quarters;
+  } catch (error) {
+    console.error("Error fetching all quarters:", error);
+    throw new Error("Failed to fetch quarters");
   }
 }

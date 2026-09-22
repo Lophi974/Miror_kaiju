@@ -30,5 +30,7 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
     throw new Error(data.message ?? "Identifiants invalides.");
   }
 
+  localStorage.setItem("token", data.token ?? "");
+
   return data;
 }
