@@ -1,7 +1,5 @@
 import { getSocketServer } from "./socket";
 
-export function broadcastSeverityLevel() {
-
-    getSocketServer().emit("alertLevelChange");
-
+export function broadcastSeverityLevel(level: number) {
+  getSocketServer().emit("alertLevelChange", { level });
 }
