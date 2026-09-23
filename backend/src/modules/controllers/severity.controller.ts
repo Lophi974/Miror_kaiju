@@ -1,3 +1,4 @@
+import { broadcastSeverityLevel } from "../../wc/broadcast";
 import {
   changeSeverityForAllQuartersService,
   getSeverityForOneQuarterService,
@@ -19,7 +20,7 @@ export async function getSeverityForOneQuarter(
 }
 
 export async function changeSeverityForAllQuarters(
-  req: { body: { severity: number}, user: { sub: string; role: string } },
+  req: { body: { severity: number }, user: { sub: string; role: string } },
   res: any,
 ): Promise<any> {
   const { severity } = req.body;
@@ -42,6 +43,8 @@ export async function changeSeverityForAllQuarters(
   }
 
   const updatedSeverities = await changeSeverityForAllQuartersService(severity);
+
+  broadcastSeverityLevel(severity);
 
   return res.status(200).json({ success: true, data: updatedSeverities });
 }

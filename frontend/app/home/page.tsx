@@ -8,6 +8,7 @@ import { fetchAllQuarter } from "../../fetch/ressources";
 import { changeSeverityLevel } from "../../fetch/severity";
 import { fetchMe } from "@/fetch/auth";
 import { useAuth } from "../contexte/provider";
+import { io as socketIO, Socket } from "socket.io-client";
 
 type ZoneId = "A" | "E" | "X" | "W" | "Z";
 
@@ -182,6 +183,28 @@ export default function ZoneMap({
     };
     loadActiveLevel();
     fetchAllZonesResources();
+  }, [fetchAllZonesResources]);
+
+  // Connexion Socket.IO : quand le backend diffuse un changement de niveau,
+  // on met à jour l'affichage local sans que l'utilisateur ait à recharger.
+  useEffect(() => {
+    const socket: Socket = socketIO(
+      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:1919",
+      { withCredentials: true },
+    );
+
+    socket.on("alertLevelChange", (payload: { level: number }) => {
+      console.log("[SOCKET] alertLevelChange reçu :", payload);
+      setActiveLevel(payload.level);
+      // Le seuil de rétention dépend du quartier, pas du niveau global, donc
+      // on ne le retouche pas ici -- mais on rafraîchit les ressources, car
+      // un changement de niveau peut s'accompagner de mouvements de stock.
+      fetchAllZonesResources();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [fetchAllZonesResources]);
 
   async function handleChangeLevel(level: number) {

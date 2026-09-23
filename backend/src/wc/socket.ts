@@ -1,10 +1,11 @@
 import "dotenv/config";
 import { Server } from "socket.io";
+import type { Server as HttpServer } from "node:http";
 
 let io: Server | null = null;
 
-export function initializeSocketServer(app: any) {
-  const io = new Server(app, {
+export function initializeSocketServer(httpServer: HttpServer) {
+  io = new Server(httpServer, {
     cors: {
       origin: "http://localhost:9001",
       credentials: true,
@@ -13,10 +14,10 @@ export function initializeSocketServer(app: any) {
 
   io.on("connection", (socket) => {
     console.log("a user connected");
-  });
 
-  io.on("disconnect", (socket) => {
-    console.log("a user disconnected");
+    socket.on("disconnect", () => {
+      console.log("a user disconnected");
+    });
   });
 
   return io;
@@ -28,8 +29,3 @@ export function getSocketServer() {
   }
   return io;
 }
-
-
-
-
-

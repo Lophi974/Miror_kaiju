@@ -7,6 +7,7 @@ import severityRouter from "./modules/routes/severity.route";
 import transactionRouter from "./modules/routes/transaction.route";
 import cors from "cors";
 import { createServer } from "node:http";
+import { initializeSocketServer } from "./wc/socket";
 
 const app = Express();
 
@@ -32,6 +33,7 @@ app.use("/api/severities", severityRouter);
 app.use("/api/transactions", transactionRouter);
 
 const server = createServer(app);
+initializeSocketServer(server);
 
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
