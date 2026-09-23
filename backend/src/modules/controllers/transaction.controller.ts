@@ -248,13 +248,11 @@ export async function transferResources(
         createdById: userId,
       });
 
-      return res
-        .status(201)
-        .json({
-          success: true,
-          transfer,
-          note: "Route maritime : délai de livraison doublé.",
-        });
+      return res.status(201).json({
+        success: true,
+        transfer,
+        note: "Route maritime : délai de livraison doublé.",
+      });
     }
 
     // Sinon, transit via un quartier intermédiaire commun (souvent Xeno).

@@ -54,3 +54,18 @@ export async function loginUser(
     .json({ success: true, message: "Login successful", token });
 }
 
+export async function me(req: any, res: any) {
+  const userInfo = { userId: req.user.sub, role: req.user.role };
+  console.log(userInfo);
+  return res.status(200).json({ success: true, user: userInfo });
+}
+
+
+export async function disconnect(req: any, res: any) {
+    return res.clearCookie("token", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+    }).status(200).json({ success: true, message: "Déconnexion réussie" });
+    
+}
