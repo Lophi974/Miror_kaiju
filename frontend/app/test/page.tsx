@@ -184,7 +184,7 @@ export default function ZoneMap({
     fetchAllZonesResources();
   }, [fetchAllZonesResources]);
 
-  async function handleChangeLevel() {
+  async function handleChangeLevel(level: number) {
     try {
       const user = await fetchMe();
 
@@ -352,7 +352,7 @@ export default function ZoneMap({
         )}
       </div>
 
-      <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
+      {user != null && user.role == "CD" && <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
         {[
           { level: 1, color: "bg-green-500 hover:bg-green-400" },
           { level: 2, color: "bg-lime-500 hover:bg-lime-400" },
@@ -364,8 +364,7 @@ export default function ZoneMap({
             key={level}
             type="button"
             onClick={() => {
-              setActiveLevel(activeLevel === level ? null : level);
-              handleChangeLevel();
+              handleChangeLevel(level);
             }}
             className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-colors ${color} ${
               activeLevel === level ? "ring-4 ring-white/50" : ""
@@ -374,7 +373,7 @@ export default function ZoneMap({
             Niveau {level}
           </button>
         ))}
-      </div>
+      </div>}
     </main>
   );
 }
