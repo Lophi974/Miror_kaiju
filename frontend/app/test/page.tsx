@@ -115,7 +115,6 @@ export default function ZoneMap({
 }: {
   onPopupChange: (isOpen: boolean) => void;
 }) {
-
   const { user, loading, isAuthenticated, logout } = useAuth();
 
   const [activeZone, setActiveZone] = useState<ZoneId | null>(null);
@@ -201,6 +200,10 @@ export default function ZoneMap({
       console.error("Error changing severity level:", error);
     }
   }
+
+  useEffect(() => {
+    console.log("user a changé:", user, "loading:", loading);
+  }, [user, loading]);
 
   console.log("test de user",user);
 

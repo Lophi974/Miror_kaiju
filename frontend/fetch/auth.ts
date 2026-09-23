@@ -32,7 +32,7 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
 }
 
 export type MeResponse = {
-  user?: { userId: string; role: string };
+  user?: { userId: string; role: string; name: string; quarterId: string | null };
   message?: string;
 };
 
