@@ -5,6 +5,8 @@ type LoginPayload = {
 
 type LoginResponse = {
   user?: {
+    name?: string | null;
+    username?: string | null;
     email?: string;
   };
   token?: string;
@@ -31,6 +33,12 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
   }
 
   localStorage.setItem("token", data.token ?? "");
+  localStorage.setItem("user", JSON.stringify(data.user ?? { email: payload.email }));
 
   return data;
+}
+
+export async function logoutUser() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 }

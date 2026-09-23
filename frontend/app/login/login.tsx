@@ -36,7 +36,7 @@ export default function LoginForm() {
     try {
       await loginUser(form);
       setMessage("Connexion réussie");
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de connexion");
     } finally {
