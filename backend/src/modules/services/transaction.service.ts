@@ -71,7 +71,9 @@ export async function getAdjacentQuarters(quarterCode: QuarterCode) {
   const adjacentIds = rows.map((r) => r.quarterBId);
   if (adjacentIds.length === 0) return [];
 
-  return db.orm.public.Quarter.where((q) => q.id.in(uuidList(adjacentIds))).all();
+  return db.orm.public.Quarter.where((q) =>
+    q.id.in(uuidList(adjacentIds)),
+  ).all();
 }
 
 // Cherche un quartier commun adjacent aux deux (pour un transit à un saut).
@@ -108,14 +110,20 @@ export async function bothHaveSeaAccess(
 // --------------------------------------------------------------------------
 
 export async function getSystemConfig() {
-  const config = await db.orm.public.SystemConfig.where((c) => c.id.eq(1)).first();
+  const config = await db.orm.public.SystemConfig.where((c) =>
+    c.id.eq(1),
+  ).first();
   if (!config) throw new Error("System config not found");
   return config;
 }
 
-export async function getQuarterResource(quarterId: string, resourceTypeId: string) {
-  return db.orm.public.QuarterResource
-    .where((qr) => qr.quarterId.eq(uuid(quarterId)))
+export async function getQuarterResource(
+  quarterId: string,
+  resourceTypeId: string,
+) {
+  return db.orm.public.QuarterResource.where((qr) =>
+    qr.quarterId.eq(uuid(quarterId)),
+  )
     .where((qr) => qr.resourceTypeId.eq(uuid(resourceTypeId)))
     .first();
 }
@@ -149,7 +157,9 @@ export async function checkIfQuarterHasEnoughResources(
 
 // Tous les quartiers partagent le même niveau en pratique : on lit celui du
 // quartier demandeur (le "premier" quartier de la requête).
-export async function getQuarterSeverityLevel(quarterId: string): Promise<number> {
+export async function getQuarterSeverityLevel(
+  quarterId: string,
+): Promise<number> {
   const severity = await db.orm.public.DistrictSeverity.where((s) =>
     s.quarterId.eq(uuid(quarterId)),
   ).first();
@@ -161,7 +171,10 @@ export async function getQuarterSeverityLevel(quarterId: string): Promise<number
 // PERMISSIONS (matrice rôles × niveaux)
 // --------------------------------------------------------------------------
 
-type TransferAction = "RESERVE_OWN" | "REQUEST_ADJACENT_TRANSFER" | "ORGANIZE_TRANSIT";
+type TransferAction =
+  | "RESERVE_OWN"
+  | "REQUEST_ADJACENT_TRANSFER"
+  | "ORGANIZE_TRANSIT";
 
 export function canPerformAction(
   role: OfficerRole,
