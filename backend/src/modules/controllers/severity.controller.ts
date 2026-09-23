@@ -19,10 +19,18 @@ export async function getSeverityForOneQuarter(
 }
 
 export async function changeSeverityForAllQuarters(
-  req: { body: { severity: number } },
+  req: { body: { severity: number}, user: { sub: string; role: string } },
   res: any,
 ): Promise<any> {
   const { severity } = req.body;
+  const userId = req.user.sub;
+  const role = req.user.role;
+
+  if (role !== "CD") {
+    return res
+      .status(403)
+      .json({ success: false, message: "User does not have permission to change severity level." });
+  }
 
   if (severity === undefined || severity < 1 || severity > 5) {
     return res
