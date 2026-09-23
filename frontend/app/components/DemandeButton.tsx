@@ -13,7 +13,6 @@ interface Quartier {
 }
 
 interface Ressource {
-
   id: string;
   initialQuantity: number;
   currentQuantity: number;
@@ -24,16 +23,15 @@ interface Ressource {
     unit: string;
   };
   quarterId: string;
-  quarter:{
+  quarter: {
     id: string;
     code: string;
     name: string;
     hasSeaAccess: boolean;
     treshHoldPercent: number;
-  }
+  };
   resourceTypeId: string;
   updatedAt: string;
-
 }
 
 export default function DemandeButton() {
@@ -48,7 +46,7 @@ export default function DemandeButton() {
   const [horaire, setHoraire] = useState("08:00");
 
   const [ressources, setRessources] = useState<Ressource[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
   const [ressourcesLoading, setRessourcesLoading] = useState(false);
   const [ressourcesError, setRessourcesError] = useState<string | null>(null);
 
@@ -85,7 +83,7 @@ export default function DemandeButton() {
     setRessourcesLoading(true);
     setRessourcesError(null);
     setRessources([]);
-    setSelected([]);
+    setSelected(null);
 
     fetch(API_URL + "/api/ressources/quarter/" + from.id, {
       credentials: "include",
@@ -97,9 +95,10 @@ export default function DemandeButton() {
 
         const body = await res.json();
 
-
         if (!res.ok || !body.success) {
-          throw new Error(body.message || "Erreur lors du chargement des ressources");
+          throw new Error(
+            body.message || "Erreur lors du chargement des ressources",
+          );
         }
 
         return body.data as Ressource[];
@@ -107,26 +106,22 @@ export default function DemandeButton() {
       .then((data) => setRessources(data))
       .catch((err: unknown) => {
         console.error("[RESSOURCES] Error:", err);
-        setRessourcesError(err instanceof Error ? err.message : "Erreur inconnue");
+        setRessourcesError(
+          err instanceof Error ? err.message : "Erreur inconnue",
+        );
       })
       .finally(() => setRessourcesLoading(false));
   }, [open, from]);
 
-  const toggleRessource = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
-    );
-  };
-
   const handleClose = () => {
     setOpen(false);
-    setSelected([]);
+    setSelected(null);
     setRessourcesError(null);
     setZonesError(null);
   };
 
   const handleSubmit = async () => {
-    if (!from || !to) return;
+    if (!from || !to || !selected) return;
 
     try {
       const res = await fetch(API_URL + "/api/ressources/demande", {
@@ -136,7 +131,7 @@ export default function DemandeButton() {
         body: JSON.stringify({
           fromQuarterId: from.id,
           toQuarterId: to.id,
-          ressources: selected,
+          ressourceId: selected,
           horaire,
         }),
       });
@@ -146,7 +141,9 @@ export default function DemandeButton() {
       handleClose();
     } catch (err: unknown) {
       console.error(err);
-      setRessourcesError(err instanceof Error ? err.message : "Erreur inconnue");
+      setRessourcesError(
+        err instanceof Error ? err.message : "Erreur inconnue",
+      );
     }
   };
 
@@ -198,11 +195,15 @@ export default function DemandeButton() {
               <>
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="mb-2 block text-sm text-slate-200">Depuis</label>
+                    <label className="mb-2 block text-sm text-slate-200">
+                      Depuis
+                    </label>
                     <select
                       value={from.id}
                       onChange={(event) => {
-                        const found = zones.find((z) => z.id === event.target.value);
+                        const found = zones.find(
+                          (z) => z.id === event.target.value,
+                        );
                         setFrom(found ?? null);
                       }}
                       className="w-full rounded-lg border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
@@ -216,11 +217,15 @@ export default function DemandeButton() {
                   </div>
 
                   <div className="flex-1">
-                    <label className="mb-2 block text-sm text-slate-200">Vers</label>
+                    <label className="mb-2 block text-sm text-slate-200">
+                      Vers
+                    </label>
                     <select
                       value={to.id}
                       onChange={(event) => {
-                        const found = zones.find((z) => z.id === event.target.value);
+                        const found = zones.find(
+                          (z) => z.id === event.target.value,
+                        );
                         setTo(found ?? null);
                       }}
                       className="w-full rounded-lg border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
@@ -235,7 +240,9 @@ export default function DemandeButton() {
                 </div>
 
                 <div className="mt-6">
-                  <label className="mb-2 block text-sm text-slate-200">Ressources</label>
+                  <label className="mb-2 block text-sm text-slate-200">
+                    Ressource
+                  </label>
 
                   {ressourcesLoading && (
                     <div className="rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-slate-300">
@@ -249,34 +256,40 @@ export default function DemandeButton() {
                     </div>
                   )}
 
-                  {!ressourcesLoading && !ressourcesError && ressources.length === 0 && (
-                    <div className="rounded-xl border border-yellow-600 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
-                      Aucune ressource disponible pour la {from.name}.
-                    </div>
-                  )}
+                  {!ressourcesLoading &&
+                    !ressourcesError &&
+                    ressources.length === 0 && (
+                      <div className="rounded-xl border border-yellow-600 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
+                        Aucune ressource disponible pour la {from.name}.
+                      </div>
+                    )}
 
-                  {!ressourcesLoading && !ressourcesError && ressources.length > 0 && (
-                    <div className="flex flex-col gap-2 max-h-48 overflow-y-auto rounded-xl border border-slate-700 bg-[#101a2d] p-3">
-                      {ressources.map((r) => (
-                        <label
-                          key={r.id}
-                          className="flex items-center gap-2 text-sm text-slate-200"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(r.id)}
-                            onChange={() => toggleRessource(r.id)}
-                            className="accent-emerald-500"
-                          />
-                          {r.resourceType.name}
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                  {!ressourcesLoading &&
+                    !ressourcesError &&
+                    ressources.length > 0 && (
+                      <select
+                        value={selected ?? ""}
+                        onChange={(event) =>
+                          setSelected(event.target.value || null)
+                        }
+                        className="w-full rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                      >
+                        <option value="" disabled>
+                          Sélectionner une ressource
+                        </option>
+                        {ressources.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.resourceType.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                 </div>
 
-                <div className="mt-5 rounded-xl border border-slate-700 bg-[#101a2d] p-4 text-sm text-slate-200">
-                  <label className="mb-2 block text-sm text-slate-200">Horaire</label>
+                {/* <div className="mt-5 rounded-xl border border-slate-700 bg-[#101a2d] p-4 text-sm text-slate-200">
+                  <label className="mb-2 block text-sm text-slate-200">
+                    Horaire
+                  </label>
                   <select
                     value={horaire}
                     onChange={(event) => setHoraire(event.target.value)}
@@ -289,7 +302,7 @@ export default function DemandeButton() {
                     <option value="16:00">16:00</option>
                     <option value="18:00">18:00</option>
                   </select>
-                </div>
+                </div> */}
               </>
             )}
 
@@ -304,7 +317,7 @@ export default function DemandeButton() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={selected.length === 0 || !from || !to}
+                disabled={!selected || !from || !to}
                 className="rounded-xl bg-emerald-500 px-5 py-2 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Envoyer

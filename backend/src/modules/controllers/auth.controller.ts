@@ -21,9 +21,9 @@ export async function loginUser(
   console.log("loginUser email:", email);
   console.log("loginUser password:", password);
 
-  const { id, role, hashedPassword } = (await getUserByEmail(email)) || {};
+  const { id, role, hashedPassword, name, quarterId } = (await getUserByEmail(email)) || {};
 
-  if (!id || !role || !hashedPassword) {
+  if (!id || !role || !hashedPassword || !name || !quarterId) {
     return res
       .status(401)
       .json({ success: false, message: "Invalid email or password" });
@@ -42,7 +42,7 @@ export async function loginUser(
       .json({ success: false, message: "Invalid email or password" });
   }
 
-  const token = createToken({ user_id: id, role: role });
+  const token = createToken({ user_id: id, role: role, name: name, quarterId: quarterId });
 
   return res
     .cookie("token", token, {
@@ -55,7 +55,7 @@ export async function loginUser(
 }
 
 export async function me(req: any, res: any) {
-  const userInfo = { userId: req.user.sub, role: req.user.role };
+  const userInfo = { userId: req.user.sub, role: req.user.role, name: req.user.name, quarterId: req.user.quarterId };
   console.log(userInfo);
   return res.status(200).json({ success: true, user: userInfo });
 }

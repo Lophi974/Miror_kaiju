@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 
 import { loginUser } from "@/fetch/auth";
+import { useAuth } from "../contexte/provider";
 
 const initialForm = {
   email: "",
@@ -14,6 +15,7 @@ type FormState = typeof initialForm;
 
 export default function LoginForm() {
   const router = useRouter();
+  const { refetch } = useAuth(); // Hook appelé au niveau racine du composant, pas dans handleSubmit
   const [form, setForm] = useState<FormState>(initialForm);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export default function LoginForm() {
     try {
       await loginUser(form);
       setMessage("Connexion réussie");
+      await refetch(); // met à jour le context Auth avec le user fraîchement connecté
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de connexion");
@@ -48,13 +51,18 @@ export default function LoginForm() {
     <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#1b3a5a,#07131f_55%)] px-4 py-10 text-white">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-sm">
         <div className="mb-8 text-center">
-          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Kaiju</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">
+            Kaiju
+          </p>
           <h1 className="mt-3 text-3xl font-bold">Connexion</h1>
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-medium text-slate-200"
+            >
               Email
             </label>
             <input
@@ -71,7 +79,10 @@ export default function LoginForm() {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-200">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium text-slate-200"
+            >
               Mot de passe
             </label>
             <input

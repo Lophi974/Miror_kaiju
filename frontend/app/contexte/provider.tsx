@@ -13,6 +13,8 @@ import { fetchMe, logoutUser } from "@/fetch/auth";
 type AuthUser = {
   userId: string;
   role: string;
+  name: string;
+  quarterId: string | null;
 };
 
 type AuthContextValue = {
@@ -40,7 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // c'est un état normal "non connecté", pas une erreur à afficher.
       const data = await fetchMe();
       if (data?.user) {
-        setUser({ userId: data.user.userId, role: data.user.role });
+        setUser({
+          userId: data.user.userId,
+          role: data.user.role,
+          name: data.user.name,
+          quarterId: data.user.quarterId,
+        });
       } else {
         setUser(null);
       }
@@ -88,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth doit être utilisé à l'intérieur d'un AuthProvider");
+    throw new Error(
+      "useAuth doit être utilisé à l'intérieur d'un AuthProvider",
+    );
   }
   return context;
 }

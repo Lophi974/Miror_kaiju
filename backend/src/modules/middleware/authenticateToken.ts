@@ -6,23 +6,33 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export function authenticateToken(req: any, res: any, next: any) {
+  const cookieToken = req.cookies?.token;
 
-    const authHeader = req.headers.authorization;
-    console.log('Received auth header:', authHeader, req.headers);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, message: 'Token missing or invalid format' });
-    }
+  const authHeader = req.headers.authorization;
+  const headerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
 
-    const token = authHeader.split(' ')[1];
+  const token = cookieToken || headerToken;
 
-    try {
-        const secret = JWT_SECRET;
-        const decoded = jwt.verify(token, secret!);
-        req.user = decoded;
-        next();
-    } catch (error) {
+  console.log("Received token:", token ? "present" : "undefined");
 
-        return res.status(403).json({ success: false, message: 'Invalid or expired token' });
-    }
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Token missing or invalid format" });
+  }
+
+  try {
+    const secret = JWT_SECRET;
+    const decoded = jwt.verify(token, secret!);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Invalid or expired token" });
+  }
 }
