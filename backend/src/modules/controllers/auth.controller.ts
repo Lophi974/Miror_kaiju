@@ -21,9 +21,13 @@ export async function loginUser(
   console.log("loginUser email:", email);
   console.log("loginUser password:", password);
 
-  const { id, role, hashedPassword, name, quarterId } = (await getUserByEmail(email)) || {};
+  const { id, role, hashedPassword, name, quarterId } =
+    (await getUserByEmail(email)) || {};
 
-  if (!id || !role || !hashedPassword || !name || !quarterId) {
+  // quarterId est légitimement absent pour CD et LC (portée ville entière),
+  // donc on ne le vérifie pas ici -- seul un id/role/hashedPassword/name
+  // manquant signifie "utilisateur introuvable".
+  if (!id || !role || !hashedPassword || !name) {
     return res
       .status(401)
       .json({ success: false, message: "Invalid email or password" });
@@ -42,7 +46,12 @@ export async function loginUser(
       .json({ success: false, message: "Invalid email or password" });
   }
 
-  const token = createToken({ user_id: id, role: role, name: name, quarterId: quarterId });
+  const token = createToken({
+    user_id: id,
+    role: role,
+    name: name,
+    quarterId: quarterId ?? null,
+  });
 
   return res
     .cookie("token", token, {
@@ -55,17 +64,23 @@ export async function loginUser(
 }
 
 export async function me(req: any, res: any) {
-  const userInfo = { userId: req.user.sub, role: req.user.role, name: req.user.name, quarterId: req.user.quarterId };
+  const userInfo = {
+    userId: req.user.sub,
+    role: req.user.role,
+    name: req.user.name,
+    quarterId: req.user.quarterId ?? null,
+  };
   console.log(userInfo);
   return res.status(200).json({ success: true, user: userInfo });
 }
 
-
 export async function disconnect(req: any, res: any) {
-    return res.clearCookie("token", {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-    }).status(200).json({ success: true, message: "Déconnexion réussie" });
-    
+  return res
+    .clearCookie("token", {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    })
+    .status(200)
+    .json({ success: true, message: "Déconnexion réussie" });
 }

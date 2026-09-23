@@ -33,7 +33,7 @@ export async function changeSeverityLevel(newLevel: number) {
     }
 
     const response = await fetch("http://localhost:1919/api/severities", {
-      method: "POST",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },

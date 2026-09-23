@@ -115,7 +115,6 @@ export default function ZoneMap({
 }: {
   onPopupChange: (isOpen: boolean) => void;
 }) {
-
   const { user, loading, isAuthenticated, logout } = useAuth();
 
   const [activeZone, setActiveZone] = useState<ZoneId | null>(null);
@@ -185,24 +184,37 @@ export default function ZoneMap({
     fetchAllZonesResources();
   }, [fetchAllZonesResources]);
 
-  async function handleChangeLevel() {
+  async function handleChangeLevel(level: number) {
+    const conf = confirm(
+      "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
+    );
+
+    if (!conf) {
+      return;
+    }
+
+    // On utilise directement "level" (le paramètre reçu au clic), jamais
+    // "activeLevel" ici : setActiveLevel est asynchrone, donc juste après
+    // l'avoir appelé, "activeLevel" contiendrait encore l'ANCIENNE valeur
+    // (celle du rendu précédent), pas celle qu'on vient de sélectionner.
+    // C'est ce qui causait l'incrément "d'un cran de retard".
+    if (level < 1 || level > 5) {
+      return;
+    }
+
+    setActiveLevel(level);
+
     try {
-      const user = await fetchMe();
-
-      if (!user || !user.user) {
-        console.error(
-          "Utilisateur non authentifié ou informations manquantes.",
-        );
-        return;
+      const response = await changeSeverityLevel(level);
+      if (response) {
+        console.log("Severity level changed successfully:", response);
       }
-
-      const response = await changeSeverityLevel(activeLevel ?? 1);
     } catch (error) {
       console.error("Error changing severity level:", error);
     }
   }
 
-  console.log("test de user",user);
+  console.log("test de user", user);
 
   return (
     <main className="min-h-screen bg-[#11253C] pt-20">
@@ -349,29 +361,30 @@ export default function ZoneMap({
         )}
       </div>
 
-      <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
-        {[
-          { level: 1, color: "bg-green-500 hover:bg-green-400" },
-          { level: 2, color: "bg-lime-500 hover:bg-lime-400" },
-          { level: 3, color: "bg-yellow-500 hover:bg-yellow-400" },
-          { level: 4, color: "bg-orange-500 hover:bg-orange-400" },
-          { level: 5, color: "bg-red-600 hover:bg-red-500" },
-        ].map(({ level, color }) => (
-          <button
-            key={level}
-            type="button"
-            onClick={() => {
-              setActiveLevel(activeLevel === level ? null : level);
-              handleChangeLevel();
-            }}
-            className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-colors ${color} ${
-              activeLevel === level ? "ring-4 ring-white/50" : ""
-            }`}
-          >
-            Niveau {level}
-          </button>
-        ))}
-      </div>
+      {user != null && user.role == "CD" && (
+        <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
+          {[
+            { level: 1, color: "bg-green-500 hover:bg-green-400" },
+            { level: 2, color: "bg-lime-500 hover:bg-lime-400" },
+            { level: 3, color: "bg-yellow-500 hover:bg-yellow-400" },
+            { level: 4, color: "bg-orange-500 hover:bg-orange-400" },
+            { level: 5, color: "bg-red-600 hover:bg-red-500" },
+          ].map(({ level, color }) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => {
+                handleChangeLevel(level);
+              }}
+              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-colors ${color} ${
+                activeLevel === level ? "ring-4 ring-white/50" : ""
+              }`}
+            >
+              Niveau {level}
+            </button>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

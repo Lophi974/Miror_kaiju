@@ -38,7 +38,7 @@ export default function LoginForm() {
     try {
       await loginUser(form);
       setMessage("Connexion réussie");
-      await refetch(); // met à jour le context Auth avec le user fraîchement connecté
+      await refetch();
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de connexion");
