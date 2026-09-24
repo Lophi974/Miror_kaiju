@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1919";
+
+// Durée de l'animation (en ms) : doit correspondre à duration-500 plus bas
+const ANIM_MS = 500;
 
 interface Quartier {
   id: string;
@@ -37,6 +40,13 @@ interface Ressource {
 export default function DemandeButton() {
   const [open, setOpen] = useState(false);
 
+  // Animation bouton -> popup
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [animate, setAnimate] = useState(false);
+  const [fromTransform, setFromTransform] = useState("none");
+
   const [zones, setZones] = useState<Quartier[]>([]);
   const [zonesLoading, setZonesLoading] = useState(false);
   const [zonesError, setZonesError] = useState<string | null>(null);
@@ -49,6 +59,37 @@ export default function DemandeButton() {
   const [selected, setSelected] = useState<string | null>(null);
   const [ressourcesLoading, setRessourcesLoading] = useState(false);
   const [ressourcesError, setRessourcesError] = useState<string | null>(null);
+
+  // Calcule la transformation qui fait "ressembler" la popup au bouton
+  // (même position, même taille)
+  const getFromTransform = () => {
+    const b = btnRef.current?.getBoundingClientRect();
+    const p = panelRef.current?.getBoundingClientRect();
+    if (!b || !p) return "none";
+    const sx = b.width / p.width;
+    const sy = b.height / p.height;
+    const dx = b.left - p.left;
+    const dy = b.bottom - p.bottom;
+    return `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+  };
+
+  // A l'ouverture : on place la popup sur le bouton, puis on l'agrandit
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    setFromTransform(getFromTransform());
+
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => {
+      setAnimate(true);
+      r2 = requestAnimationFrame(() => setExpanded(true));
+    });
+
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [open]);
 
   // Fetch des quartiers a l'ouverture de la popup
   useEffect(() => {
@@ -114,10 +155,18 @@ export default function DemandeButton() {
   }, [open, from]);
 
   const handleClose = () => {
-    setOpen(false);
+    // La popup rétrécit jusqu'au bouton, puis on la démonte
+    setFromTransform(getFromTransform());
+    setExpanded(false);
     setSelected(null);
     setRessourcesError(null);
     setZonesError(null);
+
+    setTimeout(() => {
+      setOpen(false);
+      setAnimate(false);
+      setFromTransform("none");
+    }, ANIM_MS);
   };
 
   const handleSubmit = async () => {
@@ -151,142 +200,170 @@ export default function DemandeButton() {
     <>
       <div className="fixed bottom-6 left-6 z-50">
         <button
+          ref={btnRef}
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg transition hover:bg-cyan-400"
+          className={`inline-flex items-center justify-center rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg transition hover:bg-cyan-400 ${
+            open ? "opacity-0 pointer-events-none" : ""
+          }`}
         >
           + Faire une demande
         </button>
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-xl rounded-xl border border-slate-700 bg-[#0b1b2d] p-6 text-white shadow-2xl">
-            <div className="mb-7 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Nouvelle demande</h2>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="text-3xl leading-none text-slate-300 transition hover:text-white"
-              >
-                ×
-              </button>
-            </div>
-
-            {zonesLoading && (
-              <div className="rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-slate-300">
-                Chargement des quartiers...
+        <div
+          className="pointer-events-none fixed inset-0 z-50"
+        >
+          <div
+            ref={panelRef}
+            style={{
+              transform: expanded ? "none" : fromTransform,
+              transformOrigin: "bottom left",
+            }}
+            className={`pointer-events-auto absolute bottom-6 left-6 w-[calc(100%-3rem)] max-w-[520px] max-h-[calc(100%-3rem)] overflow-y-auto rounded-xl border p-6 text-white ${
+              animate
+                ? "transition-[transform,background-color,border-color] duration-500 ease-in-out"
+                : "transition-none"
+            } ${
+              expanded
+                ? "border-slate-700 bg-[#0b1b2d] shadow-2xl"
+                : "border-cyan-500 bg-cyan-500"
+            }`}
+          >
+            {/* Le contenu apparait apres l'agrandissement */}
+            <div
+              className={`transition-opacity ${
+                expanded
+                  ? "opacity-100 duration-300 delay-200"
+                  : "opacity-0 duration-150"
+              }`}
+            >
+              <div className="mb-7 flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Nouvelle demande</h2>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="text-3xl leading-none text-slate-300 transition hover:text-white"
+                >
+                  ×
+                </button>
               </div>
-            )}
 
-            {!zonesLoading && zonesError && (
-              <div className="rounded-xl border border-red-600 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                {zonesError}
-              </div>
-            )}
-
-            {!zonesLoading && !zonesError && (!from || !to) && (
-              <div className="rounded-xl border border-yellow-600 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
-                Aucun quartier disponible.
-              </div>
-            )}
-
-            {!zonesLoading && !zonesError && from && to && (
-              <>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="mb-2 block text-sm text-slate-200">
-                      Depuis
-                    </label>
-                    <select
-                      value={from.id}
-                      onChange={(event) => {
-                        const found = zones.find(
-                          (z) => z.id === event.target.value,
-                        );
-                        setFrom(found ?? null);
-                      }}
-                      className="w-full rounded-lg border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                    >
-                      {zones.map((zone) => (
-                        <option key={zone.id} value={zone.id}>
-                          {zone.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex-1">
-                    <label className="mb-2 block text-sm text-slate-200">
-                      Vers
-                    </label>
-                    <select
-                      value={to.id}
-                      onChange={(event) => {
-                        const found = zones.find(
-                          (z) => z.id === event.target.value,
-                        );
-                        setTo(found ?? null);
-                      }}
-                      className="w-full rounded-lg border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                    >
-                      {zones.map((zone) => (
-                        <option key={zone.id} value={zone.id}>
-                          {zone.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {zonesLoading && (
+                <div className="rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-slate-300">
+                  Chargement des quartiers...
                 </div>
+              )}
 
-                <div className="mt-6">
-                  <label className="mb-2 block text-sm text-slate-200">
-                    Ressource
-                  </label>
+              {!zonesLoading && zonesError && (
+                <div className="rounded-xl border border-red-600 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                  {zonesError}
+                </div>
+              )}
 
-                  {ressourcesLoading && (
-                    <div className="rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-slate-300">
-                      Chargement...
-                    </div>
-                  )}
+              {!zonesLoading && !zonesError && (!from || !to) && (
+                <div className="rounded-xl border border-yellow-600 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
+                  Aucun quartier disponible.
+                </div>
+              )}
 
-                  {!ressourcesLoading && ressourcesError && (
-                    <div className="rounded-xl border border-red-600 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                      {ressourcesError}
-                    </div>
-                  )}
-
-                  {!ressourcesLoading &&
-                    !ressourcesError &&
-                    ressources.length === 0 && (
-                      <div className="rounded-xl border border-yellow-600 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
-                        Aucune ressource disponible pour la {from.name}.
-                      </div>
-                    )}
-
-                  {!ressourcesLoading &&
-                    !ressourcesError &&
-                    ressources.length > 0 && (
+              {!zonesLoading && !zonesError && from && to && (
+                <>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="mb-2 block text-sm text-slate-200">
+                        Depuis
+                      </label>
                       <select
-                        value={selected ?? ""}
-                        onChange={(event) =>
-                          setSelected(event.target.value || null)
-                        }
-                        className="w-full rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        value={from.id}
+                        onChange={(event) => {
+                          const found = zones.find(
+                            (z) => z.id === event.target.value,
+                          );
+                          setFrom(found ?? null);
+                        }}
+                        className="w-full rounded-lg border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
                       >
-                        <option value="" disabled>
-                          Sélectionner une ressource
-                        </option>
-                        {ressources.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.resourceType.name}
+                        {zones.map((zone) => (
+                          <option key={zone.id} value={zone.id}>
+                            {zone.name}
                           </option>
                         ))}
                       </select>
-                    )}
-                </div>
+                    </div>
 
-                {/* <div className="mt-5 rounded-xl border border-slate-700 bg-[#101a2d] p-4 text-sm text-slate-200">
+                    <div className="flex-1">
+                      <label className="mb-2 block text-sm text-slate-200">
+                        Vers
+                      </label>
+                      <select
+                        value={to.id}
+                        onChange={(event) => {
+                          const found = zones.find(
+                            (z) => z.id === event.target.value,
+                          );
+                          setTo(found ?? null);
+                        }}
+                        className="w-full rounded-lg border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                      >
+                        {zones.map((zone) => (
+                          <option key={zone.id} value={zone.id}>
+                            {zone.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="mb-2 block text-sm text-slate-200">
+                      Ressource
+                    </label>
+
+                    {ressourcesLoading && (
+                      <div className="rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-slate-300">
+                        Chargement...
+                      </div>
+                    )}
+
+                    {!ressourcesLoading && ressourcesError && (
+                      <div className="rounded-xl border border-red-600 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                        {ressourcesError}
+                      </div>
+                    )}
+
+                    {!ressourcesLoading &&
+                      !ressourcesError &&
+                      ressources.length === 0 && (
+                        <div className="rounded-xl border border-yellow-600 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
+                          Aucune ressource disponible pour la {from.name}.
+                        </div>
+                      )}
+
+                    {!ressourcesLoading &&
+                      !ressourcesError &&
+                      ressources.length > 0 && (
+                        <select
+                          value={selected ?? ""}
+                          onChange={(event) =>
+                            setSelected(event.target.value || null)
+                          }
+                          className="w-full rounded-xl border border-slate-700 bg-[#101a2d] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        >
+                          <option value="" disabled>
+                            Sélectionner une ressource
+                          </option>
+                          {ressources.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.resourceType.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                  </div>
+
+                  <div className="mt-5 rounded-xl border border-slate-700 bg-[#101a2d] p-4 text-sm text-slate-200">
                   <label className="mb-2 block text-sm text-slate-200">
                     Horaire
                   </label>
@@ -302,26 +379,27 @@ export default function DemandeButton() {
                     <option value="16:00">16:00</option>
                     <option value="18:00">18:00</option>
                   </select>
-                </div> */}
-              </>
-            )}
+                </div>
+                </>
+              )}
 
-            <div className="mt-7 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="rounded-xl border border-slate-700 bg-[#101a2d] px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!selected || !from || !to}
-                className="rounded-xl bg-emerald-500 px-5 py-2 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Envoyer
-              </button>
+              <div className="mt-7 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="rounded-xl border border-slate-700 bg-[#101a2d] px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!selected || !from || !to}
+                  className="rounded-xl bg-emerald-500 px-5 py-2 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Envoyer
+                </button>
+              </div>
             </div>
           </div>
         </div>
