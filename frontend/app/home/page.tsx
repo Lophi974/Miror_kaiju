@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { fetchActiveLevel } from "../../fetch/severity";
 import { fetchRessourcesByQuarter } from "../../fetch/ressources";
@@ -110,6 +110,14 @@ const ZONES: Record<ZoneId, { name: string; color: string; points: string }> = {
   },
 };
 
+// Calcule le centre d'une zone (moyenne des points du polygone)
+function getZoneCenter(id: ZoneId): [number, number] {
+  const pts = ZONES[id].points.split(" ").map((p) => p.split(",").map(Number));
+  const x = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
+  const y = pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
+  return [x, y];
+}
+
 export default function ZoneMap({
   onPopupChange,
 }: {
@@ -120,6 +128,35 @@ export default function ZoneMap({
   const [activeZone, setActiveZone] = useState<ZoneId | null>(null);
   const [activeLevel, setActiveLevel] = useState<number | null>(null);
   const [retentionLevel, setRetentionLevel] = useState<number | null>(null);
+
+  // Ligne entre la zone cliquée et la popup
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [line, setLine] = useState<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  } | null>(null);
+
+  // Toast affiché en haut à droite quand le niveau change
+  const [toast, setToast] = useState<{ level: number; show: boolean } | null>(
+    null,
+  );
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(level: number) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ level, show: true });
+    toastTimer.current = setTimeout(() => {
+      setToast((t) => (t ? { ...t, show: false } : t));
+    }, 3000); // durée d'affichage en ms
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   // Ressources fetchées, indexées par zone
   const [resourcesByZone, setResourcesByZone] = useState<
@@ -184,15 +221,35 @@ export default function ZoneMap({
     fetchAllZonesResources();
   }, [fetchAllZonesResources]);
 
-  async function handleChangeLevel(level: number) {
-    const conf = confirm(
-      "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
-    );
-
-    if (!conf) {
+  // Recalcule la position de la ligne quand on change de zone / qu'on resize / qu'on scroll
+  useEffect(() => {
+    if (!activeZone) {
+      setLine(null);
       return;
     }
 
+    const update = () => {
+      const rect = mapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const [cx, cy] = getZoneCenter(activeZone);
+      setLine({
+        x1: rect.left + (cx / 100) * rect.width,
+        y1: rect.top + (cy / 100) * rect.height,
+        x2: window.innerWidth - 24 - 320, // bord gauche de la popup
+        y2: 96 + 40, // un peu sous le haut de la popup
+      });
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [activeZone]);
+
+  async function handleChangeLevel(level: number) {
     // On utilise directement "level" (le paramètre reçu au clic), jamais
     // "activeLevel" ici : setActiveLevel est asynchrone, donc juste après
     // l'avoir appelé, "activeLevel" contiendrait encore l'ANCIENNE valeur
@@ -209,6 +266,7 @@ export default function ZoneMap({
       if (response) {
         console.log("Severity level changed successfully:", response);
       }
+      showToast(level);
     } catch (error) {
       console.error("Error changing severity level:", error);
     }
@@ -218,7 +276,38 @@ export default function ZoneMap({
 
   return (
     <main className="min-h-screen bg-[#11253C] pt-20">
-      <div className="relative w-full max-w-200 aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] ">
+      {/* Toast niveau de sévérité */}
+      <div
+        role="status"
+        style={toast ? { backgroundColor: LEVEL_COLORS[toast.level] } : undefined}
+        className={`fixed top-6 right-6 z-[60] rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${
+          toast && (toast.level === 2 || toast.level === 3)
+            ? "text-black"
+            : "text-white"
+        } ${
+          toast?.show
+            ? "translate-x-0 opacity-100"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+      >
+        {toast && `Niveau de sévérité changé : niveau ${toast.level}`}
+      </div>
+
+      {/* Animations */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes drawLine {
+          to { stroke-dashoffset: 0; }
+        }
+      `}</style>
+
+      <div
+        ref={mapRef}
+        className="relative w-full max-w-200 aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] "
+      >
         {/* Carte + teinte, isolées du fond */}
         <div className="absolute inset-0 isolate">
           <Image
@@ -265,12 +354,18 @@ export default function ZoneMap({
               <polygon
                 key={id}
                 points={zone.points}
-                fill={isActive ? darken(baseColor) : "transparent"}
-                fillOpacity={isActive ? 0.55 : 0}
-                stroke={isActive ? darken(baseColor) : "transparent"}
+                style={
+                  isActive
+                    ? {
+                        fill: darken(baseColor),
+                        stroke: darken(baseColor),
+                      }
+                    : undefined
+                }
+                fillOpacity={isActive ? 0.55 : 1}
                 strokeWidth={0.5}
                 strokeLinejoin="round"
-                className="cursor-pointer"
+                className="cursor-pointer fill-transparent stroke-transparent transition-all duration-300 hover:fill-white/10"
                 onClick={() => {
                   setActiveZone(id);
                   onPopupChange(true);
@@ -280,14 +375,45 @@ export default function ZoneMap({
           })}
         </svg>
 
+        {/* Ligne entre la zone et la popup */}
+        {line && activeZone && (
+          <svg className="fixed inset-0 w-full h-full pointer-events-none z-[45]">
+            <line
+              key={activeZone}
+              x1={line.x1}
+              y1={line.y1}
+              x2={line.x2}
+              y2={line.y2}
+              stroke="#60a5fa"
+              strokeWidth={2}
+              pathLength={1}
+              strokeDasharray={1}
+              strokeDashoffset={1}
+              style={{ animation: "drawLine 0.5s ease-out 0.15s forwards" }}
+            />
+            <circle
+              cx={line.x1}
+              cy={line.y1}
+              r={5}
+              fill="#60a5fa"
+              className="animate-pulse"
+            />
+          </svg>
+        )}
+
         {/* Popup */}
         <div
-          className={`fixed top-0 right-0 h-full w-80 bg-[#0a0f1a] text-white shadow-2xl border-l border-white/10
-          transform transition-transform duration-300 ease-out z-50
-          ${activeZone ? "translate-x-0" : "translate-x-full"}`}
+          className={`fixed top-24 right-6 w-80 max-h-[calc(100vh-8rem)] overflow-y-auto
+          rounded-[2rem] bg-[#11253C] text-white shadow-2xl border border-white/20
+          transform transition-all duration-300 ease-out z-50
+          ${
+            activeZone
+              ? "translate-x-0 scale-100 opacity-100"
+              : "translate-x-[120%] scale-95 opacity-0 pointer-events-none"
+          }`}
         >
           {activeZone && (
-            <div className="p-6 flex flex-col h-full">
+            <div className="p-6 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2
                   className="text-2xl font-bold"
@@ -300,40 +426,48 @@ export default function ZoneMap({
                     setActiveZone(null);
                     onPopupChange(false);
                   }}
-                  className="text-white/50 hover:text-white text-xl leading-none"
+                  className="text-white/50 hover:text-white hover:rotate-90 transition-all duration-200 text-xl leading-none"
                 >
                   ✕
                 </button>
               </div>
 
-              <h3 className="text-sm uppercase tracking-wide text-white/40 mb-3">
+              <h3 className="text-sm uppercase tracking-wide text-white/50 mb-3">
                 Ressources
               </h3>
 
               {loadingZones.has(activeZone) ? (
-                <p className="text-white/40 text-sm">Chargement...</p>
+                <p className="text-white/50 text-sm animate-pulse">
+                  Chargement...
+                </p>
               ) : (
                 <ul className="space-y-2">
                   {(resourcesByZone[activeZone] ?? []).length === 0 ? (
-                    <li className="text-white/40 text-sm">
+                    <li className="text-white/50 text-sm">
                       Aucune ressource trouvée
                     </li>
                   ) : (
-                    resourcesByZone[activeZone]!.map((r) => {
+                    resourcesByZone[activeZone]!.map((r, i) => {
                       const critical = isResourceCritical(r, retentionLevel);
                       return (
                         <li
                           key={r.id}
-                          className={`rounded-lg px-4 py-2 text-sm border flex items-center justify-between gap-2 ${
+                          style={{
+                            animation: "fadeUp 0.4s ease-out both",
+                            animationDelay: `${i * 80}ms`,
+                          }}
+                          className={`rounded-xl px-4 py-2 text-sm border flex items-center justify-between gap-2 transition-transform duration-200 hover:scale-[1.03] ${
                             critical
                               ? "bg-red-500/10 border-red-500/50 text-red-400"
                               : "bg-white/5 border-white/10"
                           }`}
                         >
-                          <span>{r.resourceType.name}</span>
+                          <span className="font-medium">
+                            {r.resourceType.name}
+                          </span>
                           <span
                             className={`whitespace-nowrap ${
-                              critical ? "text-red-400" : "text-white/60"
+                              critical ? "text-red-400" : "text-white/70"
                             }`}
                           >
                             {r.currentQuantity}/{r.initialQuantity}{" "}
@@ -376,7 +510,7 @@ export default function ZoneMap({
               onClick={() => {
                 handleChangeLevel(level);
               }}
-              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-colors ${color} ${
+              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95 ${color} ${
                 activeLevel === level ? "ring-4 ring-white/50" : ""
               }`}
             >
