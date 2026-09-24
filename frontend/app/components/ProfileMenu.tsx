@@ -56,7 +56,7 @@ export default function ProfileMenu() {
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-56 rounded-xl border border-white/15 bg-[#0a1420] p-2 shadow-2xl"
+          className="absolute right-0 mt-1 w-40 rounded-xl border border-white/15 bg-[#0a1420] p-1 shadow-2xl"
         >
           <p className="truncate px-3 py-2 text-sm text-white/50">{user.email}</p>
           <button
