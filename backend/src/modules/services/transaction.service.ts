@@ -1,252 +1,414 @@
-import { db } from "../../prisma/db.ts";
+import { db } from "../../prisma/db";
+import { and, or } from "@prisma/orm-postgres/orm-client";
 
-type QuarterCode = "A" | "E" | "W" | "X" | "Z";
-type OfficerRole = "QC" | "LC" | "CD";
+export async function reserveResourcesService(
+  resourceTypeId: string,
+  quantity: number,
+  quarterId: string,
+  requestedById: string,
+) {
+  if (quantity <= 0) {
+    throw new Error("La quantité à réserver doit être positive.");
+  }
 
-// --------------------------------------------------------------------------
-// HELPER
-// --------------------------------------------------------------------------
+  return db.transaction(async (tx) => {
+    const [quarter, quarterResource] = await Promise.all([
+      tx.orm.public.Quarter.where((q) =>
+        q.id.eq(quarterId as Parameters<typeof q.id.eq>[0]),
+      ).first(),
+      tx.orm.public.QuarterResource.where((r) =>
+        and(
+          r.quarterId.eq(quarterId as Parameters<typeof r.quarterId.eq>[0]),
+          r.resourceTypeId.eq(
+            resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+          ),
+        ),
+      ).first(),
+    ]);
 
-// Les champs uuidString() du contract sont typés en Char<36>, un type nominal
-// qui n'existe qu'au niveau TS (à l'exécution c'est une string classique).
-// Ce helper documente l'intention et centralise le cast en un seul endroit
-// plutôt que de le répéter partout avec des `as any`.
-// Si l'import `Char` échoue (nom différent selon la version installée),
-// remplacer par: function uuid(id: string) { return id as any; }
-function uuid(id: string): any {
-  return id as unknown as any;
+    if (!quarter || !quarterResource) {
+      throw new Error("Aucune ressource de ce type pour ce quartier.");
+    }
+
+    // Seuil de rétention : 30% (arrondi au supérieur) de initialQuantity,
+    // qui ne bouge jamais.
+    const minRetention = Math.ceil(
+      (quarterResource.initialQuantity * quarter.treshHoldPercent) / 100,
+    );
+
+    if (quarterResource.currentQuantity - quantity < minRetention) {
+      throw new Error(
+        `Cette réservation ferait passer le stock sous le seuil de rétention (${minRetention}). ` +
+          `Disponible au-dessus du seuil : ${Math.max(0, quarterResource.currentQuantity - minRetention)}.`,
+      );
+    }
+
+    const remaining = quarterResource.currentQuantity - quantity;
+
+    // Décrémente le vrai stock disponible.
+    await tx.orm.public.QuarterResource.where((r) =>
+      and(
+        r.quarterId.eq(quarterId as Parameters<typeof r.quarterId.eq>[0]),
+        r.resourceTypeId.eq(
+          resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+        ),
+      ),
+    ).updateAll({ currentQuantity: remaining });
+
+    // Trace la quantité réservée au lieu de la laisser disparaître :
+    // incrémente si une ligne existe déjà pour ce couple, sinon la crée.
+    const existingAmount = await tx.orm.public.QuarterResourceAmount.where(
+      (r) =>
+        and(
+          r.quarterId.eq(quarterId as Parameters<typeof r.quarterId.eq>[0]),
+          r.resourceTypeId.eq(
+            resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+          ),
+        ),
+    ).first();
+
+    if (existingAmount) {
+      await tx.orm.public.QuarterResourceAmount.where((r) =>
+        and(
+          r.quarterId.eq(quarterId as Parameters<typeof r.quarterId.eq>[0]),
+          r.resourceTypeId.eq(
+            resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+          ),
+        ),
+      ).updateAll({ amount: existingAmount.amount + quantity });
+    } else {
+      await tx.orm.public.QuarterResourceAmount.create({
+        quarterId: quarterId as Parameters<
+          typeof tx.orm.public.QuarterResourceAmount.create
+        >[0]["quarterId"],
+        resourceTypeId: resourceTypeId as Parameters<
+          typeof tx.orm.public.QuarterResourceAmount.create
+        >[0]["resourceTypeId"],
+        amount: quantity,
+      });
+    }
+
+    const reservation = await tx.orm.public.ReservationRequest.create({
+      quarterId: quarterId as Parameters<
+        typeof tx.orm.public.ReservationRequest.create
+      >[0]["quarterId"],
+      resourceTypeId: resourceTypeId as Parameters<
+        typeof tx.orm.public.ReservationRequest.create
+      >[0]["resourceTypeId"],
+      quantity,
+      requestedById: requestedById as Parameters<
+        typeof tx.orm.public.ReservationRequest.create
+      >[0]["requestedById"],
+    });
+
+    return {
+      success: true,
+      message: `Ressources réservées avec succès. Quantité restante disponible : ${remaining}`,
+      reservationId: reservation.id,
+    };
+  });
 }
 
-function uuidList(ids: string[]): any[] {
-  return ids.map(uuid);
-}
-
-// --------------------------------------------------------------------------
-// QUARTIERS & ADJACENCE
-// --------------------------------------------------------------------------
-
-export async function getQuarterByCode(code: QuarterCode) {
-  return db.orm.public.Quarter.where((q) => q.code.eq(code)).first();
-}
-
-export async function checkIfQuartersAreAdjacent(
-  quarter1Code: QuarterCode,
-  quarter2Code: QuarterCode,
+export async function isAdjacentQuarter(
+  quarterId1: string,
+  quarterId2: string,
 ): Promise<boolean> {
-  if (quarter1Code === quarter2Code) return false;
+  const quarter1 = await db.orm.public.Quarter.where((q) =>
+    q.id.eq(quarterId1 as Parameters<typeof q.id.eq>[0]),
+  ).first();
 
-  const quarter1 = await getQuarterByCode(quarter1Code);
-  const quarter2 = await getQuarterByCode(quarter2Code);
+  const quarter2 = await db.orm.public.Quarter.where((q) =>
+    q.id.eq(quarterId2 as Parameters<typeof q.id.eq>[0]),
+  ).first();
 
   if (!quarter1 || !quarter2) {
-    throw new Error("One or both quarters not found");
+    throw new Error("One or both quarters not found.");
   }
 
-  // L'adjacence est seedée dans les deux sens (cf. contract.ts), donc un seul
-  // sens suffit en théorie ; on garde les deux par sécurité contre un seed
-  // incomplet.
-  const rowsFromA = await db.orm.public.QuarterAdjacency.where((a) =>
-    a.quarterAId.eq(uuid(quarter1.id)),
-  ).all();
-  const rowsFromB = await db.orm.public.QuarterAdjacency.where((a) =>
-    a.quarterAId.eq(uuid(quarter2.id)),
-  ).all();
+  if (quarterId1 === quarterId2) {
+    return false;
+  }
 
-  const forwardMatch = rowsFromA.some((r) => r.quarterBId === quarter2.id);
-  const backwardMatch = rowsFromB.some((r) => r.quarterBId === quarter1.id);
-
-  return forwardMatch || backwardMatch;
-}
-
-// Retourne les Quarter complets (pas les lignes d'adjacence brutes), pour
-// pouvoir utiliser .code et .id directement côté controller.
-export async function getAdjacentQuarters(quarterCode: QuarterCode) {
-  const quarter = await getQuarterByCode(quarterCode);
-  if (!quarter) throw new Error("Quarter not found");
-
-  const rows = await db.orm.public.QuarterAdjacency.where((a) =>
-    a.quarterAId.eq(uuid(quarter.id)),
-  ).all();
-
-  const adjacentIds = rows.map((r) => r.quarterBId);
-  if (adjacentIds.length === 0) return [];
-
-  return db.orm.public.Quarter.where((q) =>
-    q.id.in(uuidList(adjacentIds)),
-  ).all();
-}
-
-// Cherche un quartier commun adjacent aux deux (pour un transit à un saut).
-// Vu la topologie (X borde tout le monde), c'est presque toujours X, mais on
-// ne le hardcode pas : on privilégie X si trouvé, sinon un autre commun.
-export async function findCommonAdjacentQuarter(
-  quarter1Code: QuarterCode,
-  quarter2Code: QuarterCode,
-) {
-  const [adjacentTo1, adjacentTo2] = await Promise.all([
-    getAdjacentQuarters(quarter1Code),
-    getAdjacentQuarters(quarter2Code),
-  ]);
-
-  const idsAdjacentTo2 = new Set(adjacentTo2.map((q) => q.id));
-  const common = adjacentTo1.filter((q) => idsAdjacentTo2.has(q.id));
-
-  return common.find((q) => q.code === "X") ?? common[0] ?? null;
-}
-
-export async function bothHaveSeaAccess(
-  quarter1Code: QuarterCode,
-  quarter2Code: QuarterCode,
-): Promise<boolean> {
-  const [q1, q2] = await Promise.all([
-    getQuarterByCode(quarter1Code),
-    getQuarterByCode(quarter2Code),
-  ]);
-  return Boolean(q1?.hasSeaAccess && q2?.hasSeaAccess);
-}
-
-// --------------------------------------------------------------------------
-// RESSOURCES & SEUIL DE RÉTENTION
-// --------------------------------------------------------------------------
-
-export async function getSystemConfig() {
-  const config = await db.orm.public.SystemConfig.where((c) =>
-    c.id.eq(1),
+  const adjacency = await db.orm.public.QuarterAdjacency.where((a) =>
+    or(
+      and(
+        a.quarterAId.eq(quarterId1 as Parameters<typeof a.quarterAId.eq>[0]),
+        a.quarterBId.eq(quarterId2 as Parameters<typeof a.quarterBId.eq>[0]),
+      ),
+      and(
+        a.quarterAId.eq(quarterId2 as Parameters<typeof a.quarterAId.eq>[0]),
+        a.quarterBId.eq(quarterId1 as Parameters<typeof a.quarterBId.eq>[0]),
+      ),
+    ),
   ).first();
-  if (!config) throw new Error("System config not found");
-  return config;
+
+  return adjacency != null;
 }
 
-export async function getQuarterResource(
+/**
+ * Retourne la liste des quarterId adjacents au quartier donné.
+ * QuarterAdjacency étant seedée dans les deux sens, une seule requête
+ * suffit : on récupère toutes les lignes où le quartier apparaît en A
+ * OU en B, et on renvoie "l'autre côté" de chaque ligne.
+ */
+export async function getAdjacentQuarterIds(
   quarterId: string,
-  resourceTypeId: string,
-) {
-  return db.orm.public.QuarterResource.where((qr) =>
-    qr.quarterId.eq(uuid(quarterId)),
-  )
-    .where((qr) => qr.resourceTypeId.eq(uuid(resourceTypeId)))
-    .first();
-}
+): Promise<string[]> {
+  const quarter = await db.orm.public.Quarter.where((q) =>
+    q.id.eq(quarterId as Parameters<typeof q.id.eq>[0]),
+  ).first();
 
-// Le seuil se base sur initialQuantity (règle: "30% des ressources
-// initiales"), avec le retentionPercent global (SystemConfig), abaissable à
-// 15% par le CD au niveau 5.
-export async function checkIfQuarterHasEnoughResources(
-  quarterId: string,
-  resourceTypeId: string,
-  requestedQuantity: number,
-): Promise<boolean> {
-  const quarterResource = await getQuarterResource(quarterId, resourceTypeId);
-  if (!quarterResource) {
-    throw new Error("Resource type not found in quarter");
+  if (!quarter) {
+    throw new Error("Quarter not found.");
   }
 
-  const config = await getSystemConfig();
+  const adjacencies = await db.orm.public.QuarterAdjacency.where((a) =>
+    or(
+      a.quarterAId.eq(quarterId as Parameters<typeof a.quarterAId.eq>[0]),
+      a.quarterBId.eq(quarterId as Parameters<typeof a.quarterBId.eq>[0]),
+    ),
+  ).all();
+
+  return adjacencies.map((a) =>
+    a.quarterAId === quarterId ? a.quarterBId : a.quarterAId,
+  );
+}
+
+export async function doesTargetQuarterHaveSufficientResources(
+  sourceQuarterId: string,
+  targetQuarterId: string,
+  resourceTypeId: string,
+  quantity: number,
+): Promise<boolean> {
+  const [targetQuarter, targetResource] = await Promise.all([
+    db.orm.public.Quarter.where((q) =>
+      q.id.eq(targetQuarterId as Parameters<typeof q.id.eq>[0]),
+    ).first(),
+    db.orm.public.QuarterResource.where((r) =>
+      and(
+        r.quarterId.eq(targetQuarterId as Parameters<typeof r.quarterId.eq>[0]),
+        r.resourceTypeId.eq(
+          resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+        ),
+      ),
+    ).first(),
+  ]);
+
+  if (!targetQuarter || !targetResource) {
+    return false;
+  }
+
   const minRetention = Math.ceil(
-    (quarterResource.initialQuantity * config.retentionPercent) / 100,
+    (targetResource.initialQuantity * targetQuarter.treshHoldPercent) / 100,
   );
 
-  const available = quarterResource.currentQuantity - minRetention;
+  const availableSurplus = targetResource.currentQuantity - minRetention;
 
-  return requestedQuantity > 0 && requestedQuantity <= available;
+  return availableSurplus >= quantity;
 }
 
-// --------------------------------------------------------------------------
-// SÉVÉRITÉ / NIVEAU
-// --------------------------------------------------------------------------
-
-// Tous les quartiers partagent le même niveau en pratique : on lit celui du
-// quartier demandeur (le "premier" quartier de la requête).
-export async function getQuarterSeverityLevel(
-  quarterId: string,
-): Promise<number> {
-  const severity = await db.orm.public.DistrictSeverity.where((s) =>
-    s.quarterId.eq(uuid(quarterId)),
-  ).first();
-  if (!severity) throw new Error("Severity not found for quarter");
-  return severity.level;
-}
-
-// --------------------------------------------------------------------------
-// PERMISSIONS (matrice rôles × niveaux)
-// --------------------------------------------------------------------------
-
-type TransferAction =
-  | "RESERVE_OWN"
-  | "REQUEST_ADJACENT_TRANSFER"
-  | "ORGANIZE_TRANSIT";
-
-export function canPerformAction(
-  role: OfficerRole,
-  action: TransferAction,
-  level: number,
-): boolean {
-  switch (action) {
-    case "RESERVE_OWN":
-      // Lv2-5 : QC uniquement.
-      return level >= 2 && role === "QC";
-    case "REQUEST_ADJACENT_TRANSFER":
-      // Lv3 : QC · Lv4 : QC, LC · Lv5 : tous.
-      if (level === 3) return role === "QC";
-      if (level === 4) return role === "QC" || role === "LC";
-      if (level === 5) return true;
-      return false;
-    case "ORGANIZE_TRANSIT":
-      // Lv4 : LC · Lv5 : LC, CD.
-      if (level === 4) return role === "LC";
-      if (level === 5) return role === "LC" || role === "CD";
-      return false;
-    default:
-      return false;
-  }
-}
-
-// --------------------------------------------------------------------------
-// ÉCRITURES
-// --------------------------------------------------------------------------
-
-export async function createReservationRequest(params: {
-  quarterId: string;
-  resourceTypeId: string;
-  quantity: number;
-  requestedById: string;
-}) {
-  return db.orm.public.ReservationRequest.create({
-    quarterId: uuid(params.quarterId),
-    resourceTypeId: uuid(params.resourceTypeId),
-    quantity: params.quantity,
-    requestedById: uuid(params.requestedById),
-  });
-}
-
-export async function createTransferRequest(params: {
-  requestingQuarterId: string;
-  supplyingQuarterId: string;
-  resourceTypeId: string;
-  quantity: number;
-  routeType: "DIRECT" | "TRANSIT" | "MARITIME";
-  disasterLevelAtRequest: number;
-  createdById: string;
-}) {
+export async function createPendingTransferRequest(
+  requestingQuarterId: string,
+  supplyingQuarterId: string,
+  resourceTypeId: string,
+  quantity: number,
+  createdById: string,
+  currentLevel: number,
+) {
   return db.orm.public.TransferRequest.create({
-    requestingQuarterId: uuid(params.requestingQuarterId),
-    supplyingQuarterId: uuid(params.supplyingQuarterId),
-    resourceTypeId: uuid(params.resourceTypeId),
-    quantity: params.quantity,
-    routeType: params.routeType,
-    disasterLevelAtRequest: params.disasterLevelAtRequest,
-    createdById: uuid(params.createdById),
+    requestingQuarterId: requestingQuarterId as Parameters<
+      typeof db.orm.public.TransferRequest.create
+    >[0]["requestingQuarterId"],
+    supplyingQuarterId: supplyingQuarterId as Parameters<
+      typeof db.orm.public.TransferRequest.create
+    >[0]["supplyingQuarterId"],
+    resourceTypeId: resourceTypeId as Parameters<
+      typeof db.orm.public.TransferRequest.create
+    >[0]["resourceTypeId"],
+    quantity,
+    routeType: "DIRECT",
+    status: "PENDING",
+    disasterLevelAtRequest: currentLevel,
+    createdById: createdById as Parameters<
+      typeof db.orm.public.TransferRequest.create
+    >[0]["createdById"],
   });
 }
 
-export async function createTransitApproval(params: {
-  transferRequestId: string;
-  transitQuarterId: string;
-  order: number;
-}) {
-  return db.orm.public.TransitApproval.create({
-    transferRequestId: uuid(params.transferRequestId),
-    transitQuarterId: uuid(params.transitQuarterId),
-    order: params.order,
+/**
+ * Crée une demande de transfert non-adjacent (routeType TRANSIT), en
+ * PENDING, accompagnée d'une ligne TransitApproval par quartier
+ * intermédiaire (également PENDING — chacun doit approuver séparément
+ * avant que le transfert puisse être complété).
+ *
+ * transitQuarterIds : quartiers intermédiaires, dans l'ordre du chemin
+ * (order 1, 2, ...). Le quartier source (fournisseur) et le quartier
+ * cible (demandeur) ne doivent PAS être inclus dans ce tableau.
+ */
+export async function createPendingTransitRequest(
+  requestingQuarterId: string,
+  supplyingQuarterId: string,
+  resourceTypeId: string,
+  quantity: number,
+  createdById: string,
+  currentLevel: number,
+  transitQuarterIds: string[],
+) {
+  if (transitQuarterIds.length === 0) {
+    throw new Error("Au moins un quartier de transit est requis.");
+  }
+
+  return db.transaction(async (tx) => {
+    const transferRequest = await tx.orm.public.TransferRequest.create({
+      requestingQuarterId: requestingQuarterId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["requestingQuarterId"],
+      supplyingQuarterId: supplyingQuarterId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["supplyingQuarterId"],
+      resourceTypeId: resourceTypeId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["resourceTypeId"],
+      quantity,
+      routeType: "TRANSIT",
+      status: "PENDING",
+      disasterLevelAtRequest: currentLevel,
+      createdById: createdById as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["createdById"],
+    });
+
+    for (let i = 0; i < transitQuarterIds.length; i++) {
+      await tx.orm.public.TransitApproval.create({
+        transferRequestId: transferRequest.id as Parameters<
+          typeof tx.orm.public.TransitApproval.create
+        >[0]["transferRequestId"],
+        transitQuarterId: transitQuarterIds[i] as Parameters<
+          typeof tx.orm.public.TransitApproval.create
+        >[0]["transitQuarterId"],
+        order: i + 1,
+        status: "PENDING",
+      });
+    }
+
+    return transferRequest;
+  });
+}
+
+export async function requisitionResourcesService(
+  resourceTypeId: string,
+  quantity: number,
+  sourceQuarterId: string,
+  targetQuarterId: string,
+  requisitionedById: string,
+  currentLevel: number,
+) {
+  if (quantity <= 0) {
+    throw new Error("La quantité réquisitionnée doit être positive.");
+  }
+
+  if (sourceQuarterId === targetQuarterId) {
+    throw new Error("Impossible de réquisitionner un quartier vers lui-même.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [sourceQuarter, sourceResource, targetQuarter, targetResource] =
+      await Promise.all([
+        tx.orm.public.Quarter.where((q) =>
+          q.id.eq(sourceQuarterId as Parameters<typeof q.id.eq>[0]),
+        ).first(),
+        tx.orm.public.QuarterResource.where((r) =>
+          and(
+            r.quarterId.eq(
+              sourceQuarterId as Parameters<typeof r.quarterId.eq>[0],
+            ),
+            r.resourceTypeId.eq(
+              resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+            ),
+          ),
+        ).first(),
+        tx.orm.public.Quarter.where((q) =>
+          q.id.eq(targetQuarterId as Parameters<typeof q.id.eq>[0]),
+        ).first(),
+        tx.orm.public.QuarterResource.where((r) =>
+          and(
+            r.quarterId.eq(
+              targetQuarterId as Parameters<typeof r.quarterId.eq>[0],
+            ),
+            r.resourceTypeId.eq(
+              resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+            ),
+          ),
+        ).first(),
+      ]);
+
+    if (!sourceQuarter || !sourceResource) {
+      throw new Error("Aucune ressource de ce type pour le quartier source.");
+    }
+    if (!targetQuarter || !targetResource) {
+      throw new Error("Aucune ressource de ce type pour le quartier cible.");
+    }
+
+    const minRetention = Math.ceil(
+      (sourceResource.initialQuantity * sourceQuarter.treshHoldPercent) / 100,
+    );
+
+    if (sourceResource.currentQuantity - quantity < minRetention) {
+      throw new Error(
+        `Cette réquisition ferait passer le stock du quartier source sous son seuil de rétention (${minRetention}). ` +
+          `Disponible au-dessus du seuil : ${Math.max(0, sourceResource.currentQuantity - minRetention)}.`,
+      );
+    }
+
+    const newSourceQuantity = sourceResource.currentQuantity - quantity;
+    const newTargetQuantity = targetResource.currentQuantity + quantity;
+
+    await tx.orm.public.QuarterResource.where((r) =>
+      and(
+        r.quarterId.eq(sourceQuarterId as Parameters<typeof r.quarterId.eq>[0]),
+        r.resourceTypeId.eq(
+          resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+        ),
+      ),
+    ).updateAll({ currentQuantity: newSourceQuantity });
+
+    await tx.orm.public.QuarterResource.where((r) =>
+      and(
+        r.quarterId.eq(targetQuarterId as Parameters<typeof r.quarterId.eq>[0]),
+        r.resourceTypeId.eq(
+          resourceTypeId as Parameters<typeof r.resourceTypeId.eq>[0],
+        ),
+      ),
+    ).updateAll({ currentQuantity: newTargetQuantity });
+
+    const transferRequest = await tx.orm.public.TransferRequest.create({
+      requestingQuarterId: targetQuarterId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["requestingQuarterId"],
+      supplyingQuarterId: sourceQuarterId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["supplyingQuarterId"],
+      resourceTypeId: resourceTypeId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["resourceTypeId"],
+      quantity,
+      routeType: "DIRECT",
+      status: "COMPLETED",
+      disasterLevelAtRequest: currentLevel,
+      createdById: requisitionedById as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["createdById"],
+      decidedById: requisitionedById as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["decidedById"],
+    });
+
+    return {
+      success: true,
+      message: `Réquisition effectuée : ${quantity} unité(s) déplacée(s) de ${sourceQuarter.code} vers ${targetQuarter.code}.`,
+      transferRequestId: transferRequest.id,
+      sourceRemaining: newSourceQuantity,
+      targetTotal: newTargetQuantity,
+    };
   });
 }
