@@ -42,29 +42,37 @@ export default function ProfileMenu() {
           role="menu"
           className="absolute right-0 mt-1 w-40 rounded-xl border border-white/15 bg-[#0a1420] p-1 shadow-2xl"
         >
-          <p className="truncate px-3 py-2 text-sm text-white/50">
-            {user?.name}
-          </p>
+          {user && (
+            <>
+              <p className="truncate px-3 py-2 text-sm text-white/50">
+                {user.name}
+              </p>
 
-          {user?.role === "CD" && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => router.push("/register")}
-              className="w-full rounded-lg px-3 py-2 text-left font-medium text-cyan-300 transition hover:bg-cyan-500/15"
-            >
-              Enregistrer une personne
-            </button>
+              {user.role === "CD" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => router.push("/register")}
+                  className="w-full rounded-lg px-3 py-2 text-left font-medium text-cyan-300 transition hover:bg-cyan-500/15"
+                >
+                  Enregistrer une personne
+                </button>
+              )}
+            </>
           )}
 
           <button
             type="button"
             role="menuitem"
-            onClick={handleLogout}
+            onClick={() => (user ? handleLogout() : router.push("/login"))}
             disabled={isLoggingOut}
             className="w-full rounded-lg px-3 py-2 text-left font-medium text-red-300 transition hover:bg-red-500/15 disabled:opacity-60"
           >
-            {isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
+            {user
+              ? isLoggingOut
+                ? "Déconnexion..."
+                : "Se déconnecter"
+              : "Se connecter"}
           </button>
         </div>
       )}
