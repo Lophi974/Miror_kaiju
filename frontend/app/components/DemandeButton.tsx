@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { saveDemandeLog } from "./demandeLog";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1919";
 
@@ -186,6 +187,15 @@ export default function DemandeButton() {
       });
 
       if (!res.ok) throw new Error("Echec de l'envoi de la demande");
+
+      saveDemandeLog({
+        fromZone: from.name,
+        toZone: to.name,
+        resource:
+          ressources.find((resource) => resource.id === selected)?.resourceType
+            .name ?? "Ressource",
+        horaire,
+      });
 
       handleClose();
     } catch (err: unknown) {
