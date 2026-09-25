@@ -231,7 +231,7 @@ export default function DemandeButton() {
               transform: expanded ? "none" : fromTransform,
               transformOrigin: "bottom left",
             }}
-            className={`pointer-events-auto absolute bottom-6 left-6 w-[calc(100%-3rem)] max-w-[520px] max-h-[calc(100%-3rem)] overflow-y-auto rounded-xl border p-6 text-white ${
+            className={`pointer-events-auto absolute bottom-6 left-6 w-[calc(100%-3rem)] max-w-130 max-h-[calc(100%-3rem)] overflow-y-auto rounded-xl border p-6 text-white ${
               animate
                 ? "transition-[transform,background-color,border-color] duration-500 ease-in-out"
                 : "transition-none"

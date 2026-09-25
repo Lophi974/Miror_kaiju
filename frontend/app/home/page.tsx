@@ -244,45 +244,47 @@ export default function ZoneMap({
     };
   }, [fetchAllZonesResources]);
 
+  // async function handleChangeLevel(level: number) {
+  //   const conf = confirm(
+  //     "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
+  //   );
+
+  //   if (!conf) {
+  //     return;
+  //   }
+
+  //   const update = () => {
+  //     const rect = mapRef.current?.getBoundingClientRect();
+  //     if (!rect) return;
+  //     const [cx, cy] = getZoneCenter(activeZone);
+  //     setLine({
+  //       x1: rect.left + (cx / 100) * rect.width,
+  //       y1: rect.top + (cy / 100) * rect.height,
+  //       x2: window.innerWidth - 24 - 320, // bord gauche de la popup
+  //       y2: 96 + 40, // un peu sous le haut de la popup
+  //     });
+  //   };
+
+  //   update();
+  //   window.addEventListener("resize", update);
+  //   window.addEventListener("scroll", update);
+  //   return () => {
+  //     window.removeEventListener("resize", update);
+  //     window.removeEventListener("scroll", update);
+  //   };
+  // }, [activeZone]);
+
   async function handleChangeLevel(level: number) {
-    const conf = confirm(
-      "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
-    );
+  if (level < 1 || level > 5) {
+    return;
+  }
 
-    if (!conf) {
-      return;
-    }
-
-    const update = () => {
-      const rect = mapRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const [cx, cy] = getZoneCenter(activeZone);
-      setLine({
-        x1: rect.left + (cx / 100) * rect.width,
-        y1: rect.top + (cy / 100) * rect.height,
-        x2: window.innerWidth - 24 - 320, // bord gauche de la popup
-        y2: 96 + 40, // un peu sous le haut de la popup
-      });
-    };
-
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update);
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update);
-    };
-  }, [activeZone]);
-
-  async function handleChangeLevel(level: number) {
-    // On utilise directement "level" (le paramètre reçu au clic), jamais
-    // "activeLevel" ici : setActiveLevel est asynchrone, donc juste après
-    // l'avoir appelé, "activeLevel" contiendrait encore l'ANCIENNE valeur
-    // (celle du rendu précédent), pas celle qu'on vient de sélectionner.
-    // C'est ce qui causait l'incrément "d'un cran de retard".
-    if (level < 1 || level > 5) {
-      return;
-    }
+  const conf = confirm(
+    "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
+  );
+  if (!conf) {
+    return;
+  }
 
     setActiveLevel(level);
 
@@ -297,7 +299,6 @@ export default function ZoneMap({
     }
   }
 
-  console.log("test de user", user);
 
   return (
     <main className="min-h-screen bg-[#11253C] pt-20">
@@ -305,7 +306,7 @@ export default function ZoneMap({
       <div
         role="status"
         style={toast ? { backgroundColor: LEVEL_COLORS[toast.level] } : undefined}
-        className={`fixed top-6 right-6 z-[60] rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${
+        className={`fixed top-6 right-6 z-60 rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${
           toast && (toast.level === 2 || toast.level === 3)
             ? "text-black"
             : "text-white"
@@ -402,7 +403,7 @@ export default function ZoneMap({
 
         {/* Ligne entre la zone et la popup */}
         {line && activeZone && (
-          <svg className="fixed inset-0 w-full h-full pointer-events-none z-[45]">
+          <svg className="fixed inset-0 w-full h-full pointer-events-none z-45">
             <line
               key={activeZone}
               x1={line.x1}
@@ -429,7 +430,7 @@ export default function ZoneMap({
         {/* Popup */}
         <div
           className={`fixed top-24 right-6 w-80 max-h-[calc(100vh-8rem)] overflow-y-auto
-          rounded-[2rem] bg-[#11253C] text-white shadow-2xl border border-white/20
+          rounded-4xl bg-[#11253C] text-white shadow-2xl border border-white/20
           transform transition-all duration-300 ease-out z-50
           ${
             activeZone
