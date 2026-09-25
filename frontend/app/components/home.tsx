@@ -8,7 +8,6 @@ import { fetchAllQuarter } from "../../fetch/ressources";
 import { changeSeverityLevel } from "../../fetch/severity";
 import { fetchMe } from "@/fetch/auth";
 import { useAuth } from "../contexte/provider";
-import { io as socketIO, Socket } from "socket.io-client";
 
 type ZoneId = "A" | "E" | "X" | "W" | "Z";
 
@@ -222,34 +221,10 @@ export default function ZoneMap({
     fetchAllZonesResources();
   }, [fetchAllZonesResources]);
 
-  // Connexion Socket.IO : quand le backend diffuse un changement de niveau,
-  // on met à jour l'affichage local sans que l'utilisateur ait à recharger.
+  // Recalcule la position de la ligne quand on change de zone / qu'on resize / qu'on scroll
   useEffect(() => {
-    const socket: Socket = socketIO(
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:1919",
-      { withCredentials: true },
-    );
-
-    socket.on("alertLevelChange", (payload: { level: number }) => {
-      console.log("[SOCKET] alertLevelChange reçu :", payload);
-      setActiveLevel(payload.level);
-      // Le seuil de rétention dépend du quartier, pas du niveau global, donc
-      // on ne le retouche pas ici -- mais on rafraîchit les ressources, car
-      // un changement de niveau peut s'accompagner de mouvements de stock.
-      fetchAllZonesResources();
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [fetchAllZonesResources]);
-
-  async function handleChangeLevel(level: number) {
-    const conf = confirm(
-      "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
-    );
-
-    if (!conf) {
+    if (!activeZone) {
+      setLine(null);
       return;
     }
 
@@ -260,8 +235,8 @@ export default function ZoneMap({
       setLine({
         x1: rect.left + (cx / 100) * rect.width,
         y1: rect.top + (cy / 100) * rect.height,
-        x2: window.innerWidth - 24 - 320, // bord gauche de la popup
-        y2: 96 + 40, // un peu sous le haut de la popup
+        x2: window.innerWidth / 2 + 358, // bord gauche de la popup
+        y2: 81 + 40, // un peu sous le haut de la popup
       });
     };
 
@@ -300,20 +275,18 @@ export default function ZoneMap({
   console.log("test de user", user);
 
   return (
-    <main className="min-h-screen bg-[#11253C] pt-20">
+    <main className="min-h-screen bg-[#11253C] pt-8">
       {/* Toast niveau de sévérité */}
       <div
         role="status"
         style={toast ? { backgroundColor: LEVEL_COLORS[toast.level] } : undefined}
-        className={`fixed top-6 right-6 z-[60] rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${
-          toast && (toast.level === 2 || toast.level === 3)
+        className={`fixed top-6 right-6 z-[60] rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${toast && (toast.level === 2 || toast.level === 3)
             ? "text-black"
             : "text-white"
-        } ${
-          toast?.show
+          } ${toast?.show
             ? "translate-x-0 opacity-100"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
       >
         {toast && `Niveau de sévérité changé : niveau ${toast.level}`}
       </div>
@@ -331,7 +304,7 @@ export default function ZoneMap({
 
       <div
         ref={mapRef}
-        className="relative w-full max-w-200 aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] "
+        className="relative right-[31px] w-full max-w-[730px] aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] "
       >
         {/* Carte + teinte, isolées du fond */}
         <div className="absolute inset-0 isolate">
@@ -382,9 +355,9 @@ export default function ZoneMap({
                 style={
                   isActive
                     ? {
-                        fill: darken(baseColor),
-                        stroke: darken(baseColor),
-                      }
+                      fill: darken(baseColor),
+                      stroke: darken(baseColor),
+                    }
                     : undefined
                 }
                 fillOpacity={isActive ? 0.55 : 1}
@@ -393,7 +366,6 @@ export default function ZoneMap({
                 className="cursor-pointer fill-transparent stroke-transparent transition-all duration-300 hover:fill-white/10"
                 onClick={() => {
                   setActiveZone(id);
-                  onPopupChange(true);
                 }}
               />
             );
@@ -428,18 +400,17 @@ export default function ZoneMap({
 
         {/* Popup */}
         <div
-          className={`fixed top-24 right-6 w-80 max-h-[calc(100vh-8rem)] overflow-y-auto
+          className={`fixed top-[15px] left-[calc(50%+358px)] w-80 max-h-[calc(100vh-8rem)] overflow-y-auto
           rounded-[2rem] bg-[#11253C] text-white shadow-2xl border border-white/20
           transform transition-all duration-300 ease-out z-50
-          ${
-            activeZone
+          ${activeZone
               ? "translate-x-0 scale-100 opacity-100"
               : "translate-x-[120%] scale-95 opacity-0 pointer-events-none"
-          }`}
+            }`}
         >
           {activeZone && (
             <div className="p-6 flex flex-col">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-3">
                 <h2
                   className="text-2xl font-bold"
                   style={{ color: ZONES[activeZone].color }}
@@ -449,7 +420,6 @@ export default function ZoneMap({
                 <button
                   onClick={() => {
                     setActiveZone(null);
-                    onPopupChange(false);
                   }}
                   className="text-white/50 hover:text-white hover:rotate-90 transition-all duration-200 text-xl leading-none"
                 >
@@ -481,19 +451,17 @@ export default function ZoneMap({
                             animation: "fadeUp 0.4s ease-out both",
                             animationDelay: `${i * 80}ms`,
                           }}
-                          className={`rounded-xl px-4 py-2 text-sm border flex items-center justify-between gap-2 transition-transform duration-200 hover:scale-[1.03] ${
-                            critical
+                          className={`rounded-xl px-4 py-2 text-sm border flex items-center justify-between gap-2 transition-transform duration-200 hover:scale-[1.03] ${critical
                               ? "bg-red-500/10 border-red-500/50 text-red-400"
                               : "bg-white/5 border-white/10"
-                          }`}
+                            }`}
                         >
                           <span className="font-medium">
                             {r.resourceType.name}
                           </span>
                           <span
-                            className={`whitespace-nowrap ${
-                              critical ? "text-red-400" : "text-white/70"
-                            }`}
+                            className={`whitespace-nowrap ${critical ? "text-red-400" : "text-white/70"
+                              }`}
                           >
                             {r.currentQuantity}/{r.initialQuantity}{" "}
                             {r.resourceType.unit}
@@ -514,14 +482,13 @@ export default function ZoneMap({
             className="fixed inset-0 bg-black/0 z-40"
             onClick={() => {
               setActiveZone(null);
-              onPopupChange(false);
             }}
           />
         )}
       </div>
 
       {user != null && user.role == "CD" && (
-        <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
+        <div className="relative right-[31px] z-45 flex flex-wrap justify-center gap-3 pt-6">
           {[
             { level: 1, color: "bg-green-500 hover:bg-green-400" },
             { level: 2, color: "bg-lime-500 hover:bg-lime-400" },
@@ -535,9 +502,8 @@ export default function ZoneMap({
               onClick={() => {
                 handleChangeLevel(level);
               }}
-              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95 ${color} ${
-                activeLevel === level ? "ring-4 ring-white/50" : ""
-              }`}
+              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95 ${color} ${activeLevel === level ? "ring-4 ring-white/50" : ""
+                }`}
             >
               Niveau {level}
             </button>
