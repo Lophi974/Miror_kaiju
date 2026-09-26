@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import ZoneMap from "./home/page";
-import Calendrier from "./Calendrier/Calendrier";
+import ZoneMap from "./components/home";
+import Calendrier from "./components/Calendrier";
 import DemandeButton from "./components/DemandeButton";
 import ProfileMenu from "./components/ProfileMenu";
 
