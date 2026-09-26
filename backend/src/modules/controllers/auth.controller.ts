@@ -6,6 +6,16 @@ dotenv.config();
 
 const PEPPER = process.env.PEPPER;
 
+// En production, le front (Vercel) et l'API (Railway) sont sur deux domaines
+// différents : le cookie doit être SameSite=None + Secure pour être renvoyé.
+// En local (même site localhost), on garde lax sans HTTPS.
+const isProduction = process.env.NODE_ENV === "production";
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? ("none" as const) : ("lax" as const),
+};
+
 export async function loginUser(
   req: { body: { email: string; password: string } },
   res: any,
@@ -55,8 +65,7 @@ export async function loginUser(
 
   return res
     .cookie("token", token, {
-      httpOnly: true,
-      secure: false,
+      ...COOKIE_OPTIONS,
       maxAge: 2 * 24 * 60 * 60 * 1000,
     })
     .status(200)
@@ -76,11 +85,8 @@ export async function me(req: any, res: any) {
 
 export async function disconnect(req: any, res: any) {
   return res
-    .clearCookie("token", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-    })
+    // Mêmes options que lors de la création, sinon le cookie n'est pas effacé
+    .clearCookie("token", COOKIE_OPTIONS)
     .status(200)
     .json({ success: true, message: "Déconnexion réussie" });
 }

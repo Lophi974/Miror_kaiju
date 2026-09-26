@@ -1,10 +1,11 @@
+import { API_URL } from "./config";
 
 
 export async function fetchRessourcesByQuarter(quarterId: string) {
 
     try{
         console.log("Fetching resources for quarter:", quarterId);
-        const response = await fetch(`http://localhost:1919/api/ressources/quarter/${quarterId}`);
+        const response = await fetch(`${API_URL}/api/ressources/quarter/${quarterId}`);
         const data = await response.json();
         console.log("fetchRessourcesByQuarter response data:", data);
         return data;
@@ -18,7 +19,7 @@ export async function fetchRessourcesByQuarter(quarterId: string) {
 export async function fetchAllQuarter() {
     try{
         console.log("Fetching all quarters");
-        const response = await fetch(`http://localhost:1919/api/ressources/quarters`);
+        const response = await fetch(`${API_URL}/api/ressources/quarters`);
         const data = await response.json();
         console.log("fetchAllQuarter response data:", data);
         return data;
@@ -32,7 +33,7 @@ export async function fetchAllQuarter() {
 // tous les quartiers.
 export async function updateThreshold(thresholdPercent: number) {
     try{
-        const response = await fetch(`http://localhost:1919/api/ressources/threshold`, {
+        const response = await fetch(`${API_URL}/api/ressources/threshold`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -52,7 +53,7 @@ export async function updateThreshold(thresholdPercent: number) {
 // Ids des quartiers adjacents (un QC ne peut demander qu'à ceux-là).
 export async function fetchAdjacentQuarters(quarterId: string) {
     try{
-        const response = await fetch(`http://localhost:1919/api/ressources/quarter/${quarterId}/adjacent`, {
+        const response = await fetch(`${API_URL}/api/ressources/quarter/${quarterId}/adjacent`, {
             credentials: "include",
         });
         const data = await response.json();

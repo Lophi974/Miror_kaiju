@@ -1,3 +1,5 @@
+import { API_URL } from "./config";
+
 type LoginPayload = {
   email: string;
   password: string;
@@ -10,7 +12,7 @@ type LoginResponse = {
 };
 
 export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
-  const response = await fetch("http://localhost:1919/api/auth/login", {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -42,7 +44,7 @@ export type MeResponse = {
  * Lève une erreur uniquement pour les cas anormaux (500, réseau, etc.).
  */
 export async function fetchMe(): Promise<MeResponse | null> {
-  const response = await fetch("http://localhost:1919/api/auth/me", {
+  const response = await fetch(`${API_URL}/api/auth/me`, {
     method: "GET",
     credentials: "include", // envoie automatiquement le cookie httpOnly
   });
@@ -68,7 +70,7 @@ export async function fetchMe(): Promise<MeResponse | null> {
  * res.clearCookie("token") pour invalider le cookie côté navigateur.
  */
 export async function logoutUser(): Promise<void> {
-  await fetch("http://localhost:1919/api/auth/logout", {
+  await fetch(`${API_URL}/api/auth/logout`, {
     method: "POST",
     credentials: "include",
   });

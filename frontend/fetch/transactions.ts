@@ -1,3 +1,5 @@
+import { API_URL } from "./config";
+
 // resourceTypeId : id du TYPE de ressource (QuarterResource.resourceTypeId),
 // pas l'id de la ligne QuarterResource.
 
@@ -7,7 +9,7 @@ export async function reserveResources(
 ) {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/reserve",
+      `${API_URL}/api/transactions/reserve`,
       {
         method: "POST",
         headers: {
@@ -35,7 +37,7 @@ export async function requestResources(
 ) {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/request",
+      `${API_URL}/api/transactions/request`,
       {
         method: "POST",
         headers: {
@@ -70,7 +72,7 @@ export async function transferResources(
 ) {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/transfer",
+      `${API_URL}/api/transactions/transfer`,
       {
         method: "POST",
         headers: {
@@ -104,7 +106,7 @@ export async function requisitionResources(
 ) {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/requisition",
+      `${API_URL}/api/transactions/requisition`,
       {
         method: "POST",
         headers: {
@@ -133,7 +135,7 @@ export async function requisitionResources(
 export async function fetchPendingRequests() {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/pending",
+      `${API_URL}/api/transactions/pending`,
       {
         credentials: "include",
       },
@@ -150,7 +152,7 @@ export async function fetchPendingRequests() {
 export async function fetchRequestHistory() {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/history",
+      `${API_URL}/api/transactions/history`,
       {
         credentials: "include",
       },
@@ -167,7 +169,7 @@ export async function fetchRequestHistory() {
 export async function approveTransferRequest(transferRequestId: string) {
   try {
     const response = await fetch(
-      `http://localhost:1919/api/transactions/requests/${transferRequestId}/approve`,
+      `${API_URL}/api/transactions/requests/${transferRequestId}/approve`,
       {
         method: "POST",
         credentials: "include",
@@ -188,7 +190,7 @@ export async function rejectTransferRequest(
 ) {
   try {
     const response = await fetch(
-      `http://localhost:1919/api/transactions/requests/${transferRequestId}/reject`,
+      `${API_URL}/api/transactions/requests/${transferRequestId}/reject`,
       {
         method: "POST",
         headers: {
@@ -211,7 +213,7 @@ export async function rejectTransferRequest(
 export async function fetchPendingTransits() {
   try {
     const response = await fetch(
-      "http://localhost:1919/api/transactions/transits/pending",
+      `${API_URL}/api/transactions/transits/pending`,
       {
         credentials: "include",
       },
@@ -229,7 +231,7 @@ export async function fetchPendingTransits() {
 export async function approveTransit(transferRequestId: string) {
   try {
     const response = await fetch(
-      `http://localhost:1919/api/transactions/transits/${transferRequestId}/approve`,
+      `${API_URL}/api/transactions/transits/${transferRequestId}/approve`,
       {
         method: "POST",
         credentials: "include",
@@ -252,7 +254,7 @@ export async function rejectTransit(
 ) {
   try {
     const response = await fetch(
-      `http://localhost:1919/api/transactions/transits/${transferRequestId}/reject`,
+      `${API_URL}/api/transactions/transits/${transferRequestId}/reject`,
       {
         method: "POST",
         headers: {

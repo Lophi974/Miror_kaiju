@@ -1,8 +1,9 @@
+import { API_URL } from "./config";
 import { fetchMe } from "./auth";
 
 export async function fetchActiveLevel() {
   try {
-    const response = await fetch("http://localhost:1919/api/severities", {
+    const response = await fetch(`${API_URL}/api/severities`, {
       credentials: "include",
     });
     const data = await response.json();
@@ -32,7 +33,7 @@ export async function changeSeverityLevel(newLevel: number) {
       );
     }
 
-    const response = await fetch("http://localhost:1919/api/severities", {
+    const response = await fetch(`${API_URL}/api/severities`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

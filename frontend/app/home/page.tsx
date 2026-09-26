@@ -226,7 +226,7 @@ export default function ZoneMap({
   // on met à jour l'affichage local sans que l'utilisateur ait à recharger.
   useEffect(() => {
     const socket: Socket = socketIO(
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:1919",
+      process.env.NEXT_PUBLIC_SOCKET_URL,
       { withCredentials: true },
     );
 
