@@ -6,6 +6,10 @@ import {
   requisitionResourcesService,
   getAdjacentQuarterIds,
   createPendingTransitRequest,
+  getPendingRequestsForQuarterService,
+  getQuarterRequestHistoryService,
+  approveTransferRequestService,
+  rejectTransferRequestService,
 } from "../services/transaction.service";
 
 export async function reserveResources(
@@ -327,6 +331,197 @@ export async function requisitionRessources(
     return res.status(500).json({
       success: false,
       message: "An error occurred while requisitioning resources.",
+    });
+  }
+}
+
+export async function getPendingRequests(
+  req: { user: { quarterId: string | null } },
+  res: any,) {
+
+    const { quarterId } = req.user;
+
+    if (!quarterId) {
+      return res.status(400).json({
+        success: false,
+        message: "User does not have a quarter assigned.",
+      });
+    }
+
+    try {
+      const pendingRequests = await getPendingRequestsForQuarterService(
+        quarterId,
+      );
+      return res.status(200).json({ success: true, data: pendingRequests });
+    } catch (error) {
+      console.error("Error in getPendingRequests:", error);
+      return res.status(500).json({
+        success: false,
+        message: "An error occurred while fetching pending requests.",
+      });
+    }
+  }
+
+  export async function getQuarterRequestHistory(
+    req: { user: { quarterId: string | null } },
+    res: any,
+  ) {
+    const { quarterId } = req.user;
+
+    if (!quarterId) {
+      return res.status(400).json({
+        success: false,
+        message: "User does not have a quarter assigned.",
+      });
+    }
+
+    try {
+      const requestHistory = await getQuarterRequestHistoryService(quarterId);
+      return res.status(200).json({ success: true, data: requestHistory });
+    } catch (error) {
+      console.error("Error in getQuarterRequestHistory:", error);
+      return res.status(500).json({
+        success: false,
+        message: "An error occurred while fetching request history.",
+      });
+    }
+  }
+export async function approveTransferRequest(
+  req: {
+    params: { id: string };
+    user: { sub: string; role: string; quarterId: string | null };
+    severityLevel: number;
+  },
+  res: any,
+) {
+  if (req.severityLevel < 3) {
+    return res.status(403).json({
+      success: false,
+      message: "Cannot approve transfer requests at this severity level.",
+    });
+  }
+
+  const { quarterId } = req.user;
+
+  if (!quarterId) {
+    return res.status(400).json({
+      success: false,
+      message: "User does not have a quarter assigned.",
+    });
+  }
+
+  try {
+    const pendingRequests =
+      await getPendingRequestsForQuarterService(quarterId);
+    const transferRequest = pendingRequests.find(
+      (r) => r.id === req.params.id && r.routeType === "DIRECT",
+    );
+
+    if (!transferRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "No pending direct request with this id for your quarter.",
+      });
+    }
+
+    const hasSufficientResources =
+      await doesTargetQuarterHaveSufficientResources(
+        transferRequest.requestingQuarterId,
+        transferRequest.supplyingQuarterId,
+        transferRequest.resourceTypeId,
+        transferRequest.quantity,
+      );
+
+    if (!hasSufficientResources) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Your quarter no longer has sufficient resources above its retention threshold. Reject the request instead.",
+      });
+    }
+
+    const result = await approveTransferRequestService(
+      transferRequest.id,
+      req.user.sub,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.transferRequest,
+    });
+  } catch (error) {
+    console.error("Error in approveTransferRequest:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while approving the transfer request.",
+    });
+  }
+}
+
+export async function rejectTransferRequest(
+  req: {
+    params: { id: string };
+    body: { rejectionReason: string };
+    user: { sub: string; role: string; quarterId: string | null };
+    severityLevel: number;
+  },
+  res: any,
+) {
+  if (req.severityLevel < 3) {
+    return res.status(403).json({
+      success: false,
+      message: "Cannot reject transfer requests at this severity level.",
+    });
+  }
+
+  const { quarterId } = req.user;
+  const { rejectionReason } = req.body;
+
+  if (!quarterId) {
+    return res.status(400).json({
+      success: false,
+      message: "User does not have a quarter assigned.",
+    });
+  }
+
+  if (!rejectionReason || !rejectionReason.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "A rejection reason is required.",
+    });
+  }
+
+  try {
+    const pendingRequests =
+      await getPendingRequestsForQuarterService(quarterId);
+    const transferRequest = pendingRequests.find(
+      (r) => r.id === req.params.id && r.routeType === "DIRECT",
+    );
+
+    if (!transferRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "No pending direct request with this id for your quarter.",
+      });
+    }
+
+    const rejectedRequest = await rejectTransferRequestService(
+      transferRequest.id,
+      req.user.sub,
+      rejectionReason.trim(),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Transfer request rejected.",
+      data: rejectedRequest,
+    });
+  } catch (error) {
+    console.error("Error in rejectTransferRequest:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while rejecting the transfer request.",
     });
   }
 }

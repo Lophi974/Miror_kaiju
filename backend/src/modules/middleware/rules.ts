@@ -4,6 +4,7 @@ export const ACTION = {
   TRANSFER: "transfer",
   REQUISITION: "requisition",
   TRESHOLD: "threshold",
+  DECIDE: "decide",
 };
 
 const RULE = {
@@ -22,6 +23,10 @@ const RULE = {
   [ACTION.REQUISITION]: {
     roles: ["CD"],
     minLevel: 4,
+  },
+  [ACTION.DECIDE]: {
+    roles: ["QC"],
+    minLevel: 3,
   },
 };
 

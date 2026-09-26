@@ -295,6 +295,202 @@ export async function createPendingTransitRequest(
   });
 }
 
+/**
+ * Demandes directes (adjacentes) en attente où ce quartier est le
+ * fournisseur sollicité (status PENDING, supplyingQuarterId = quarterId)
+ * — celles que le QC doit approuver ou refuser.
+ */
+export async function getPendingRequestsForQuarterService(quarterId: string) {
+  const quarter = await db.orm.public.Quarter.where((q) =>
+    q.id.eq(quarterId as Parameters<typeof q.id.eq>[0]),
+  ).first();
+
+  if (!quarter) {
+    throw new Error("Quarter not found.");
+  }
+
+  return db.orm.public.TransferRequest.where((r) =>
+    and(
+      r.supplyingQuarterId.eq(
+        quarterId as Parameters<typeof r.supplyingQuarterId.eq>[0],
+      ),
+      r.status.eq("PENDING" as Parameters<typeof r.status.eq>[0]),
+    ),
+  ).all();
+}
+
+/**
+ * Historique : toutes les TransferRequest où ce quartier apparaît, en
+ * tant que demandeur OU fournisseur, quel que soit le statut. Triées du
+ * plus récent au plus ancien.
+ */
+export async function getQuarterRequestHistoryService(quarterId: string) {
+  const quarter = await db.orm.public.Quarter.where((q) =>
+    q.id.eq(quarterId as Parameters<typeof q.id.eq>[0]),
+  ).first();
+
+  if (!quarter) {
+    throw new Error("Quarter not found.");
+  }
+
+  const requests = await db.orm.public.TransferRequest.where((r) =>
+    or(
+      r.requestingQuarterId.eq(
+        quarterId as Parameters<typeof r.requestingQuarterId.eq>[0],
+      ),
+      r.supplyingQuarterId.eq(
+        quarterId as Parameters<typeof r.supplyingQuarterId.eq>[0],
+      ),
+    ),
+  ).all();
+
+  return requests.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
+/**
+ * Approbation d'une demande directe (adjacente) par le QC fournisseur :
+ * le stock est déplacé et la demande passe à COMPLETED. Le seuil de
+ * rétention est revérifié (le stock a pu bouger depuis la création).
+ */
+export async function approveTransferRequestService(
+  transferRequestId: string,
+  decidedById: string,
+) {
+  return db.transaction(async (tx) => {
+    const request = await tx.orm.public.TransferRequest.where((r) =>
+      r.id.eq(transferRequestId as Parameters<typeof r.id.eq>[0]),
+    ).first();
+
+    if (!request || request.status !== "PENDING") {
+      throw new Error("Cette demande n'est plus en attente.");
+    }
+
+    const [supplyingQuarter, supplyingResource, requestingResource] =
+      await Promise.all([
+        tx.orm.public.Quarter.where((q) =>
+          q.id.eq(request.supplyingQuarterId as Parameters<typeof q.id.eq>[0]),
+        ).first(),
+        tx.orm.public.QuarterResource.where((r) =>
+          and(
+            r.quarterId.eq(
+              request.supplyingQuarterId as Parameters<typeof r.quarterId.eq>[0],
+            ),
+            r.resourceTypeId.eq(
+              request.resourceTypeId as Parameters<
+                typeof r.resourceTypeId.eq
+              >[0],
+            ),
+          ),
+        ).first(),
+        tx.orm.public.QuarterResource.where((r) =>
+          and(
+            r.quarterId.eq(
+              request.requestingQuarterId as Parameters<
+                typeof r.quarterId.eq
+              >[0],
+            ),
+            r.resourceTypeId.eq(
+              request.resourceTypeId as Parameters<
+                typeof r.resourceTypeId.eq
+              >[0],
+            ),
+          ),
+        ).first(),
+      ]);
+
+    if (!supplyingQuarter || !supplyingResource) {
+      throw new Error("Aucune ressource de ce type pour le quartier fournisseur.");
+    }
+    if (!requestingResource) {
+      throw new Error("Aucune ressource de ce type pour le quartier demandeur.");
+    }
+
+    const minRetention = Math.ceil(
+      (supplyingResource.initialQuantity * supplyingQuarter.treshHoldPercent) /
+        100,
+    );
+
+    if (supplyingResource.currentQuantity - request.quantity < minRetention) {
+      throw new Error(
+        `Ce transfert ferait passer le stock du fournisseur sous son seuil de rétention (${minRetention}). ` +
+          `Disponible au-dessus du seuil : ${Math.max(0, supplyingResource.currentQuantity - minRetention)}.`,
+      );
+    }
+
+    // Filtre sur status PENDING : si une autre décision est passée
+    // entre-temps (double clic, 2 QC), update() renvoie null.
+    const now = new Date();
+    const updatedRequest = await tx.orm.public.TransferRequest.where((r) =>
+      and(
+        r.id.eq(transferRequestId as Parameters<typeof r.id.eq>[0]),
+        r.status.eq("PENDING" as Parameters<typeof r.status.eq>[0]),
+      ),
+    ).update({
+      status: "COMPLETED",
+      decidedById: decidedById as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["decidedById"],
+      decidedAt: now,
+      completedAt: now,
+    });
+
+    if (!updatedRequest) {
+      throw new Error("Cette demande a déjà été traitée.");
+    }
+
+    const newSupplyingQuantity =
+      supplyingResource.currentQuantity - request.quantity;
+    const newRequestingQuantity =
+      requestingResource.currentQuantity + request.quantity;
+
+    await tx.orm.public.QuarterResource.where((r) =>
+      r.id.eq(supplyingResource.id as Parameters<typeof r.id.eq>[0]),
+    ).updateAll({ currentQuantity: newSupplyingQuantity });
+
+    await tx.orm.public.QuarterResource.where((r) =>
+      r.id.eq(requestingResource.id as Parameters<typeof r.id.eq>[0]),
+    ).updateAll({ currentQuantity: newRequestingQuantity });
+
+    return {
+      success: true,
+      message: `Transfert approuvé : ${request.quantity} unité(s) envoyée(s). Stock restant du fournisseur : ${newSupplyingQuantity}.`,
+      transferRequest: updatedRequest,
+    };
+  });
+}
+
+/**
+ * Refus d'une demande directe (adjacente) par le QC fournisseur : aucun
+ * stock ne bouge, la demande passe à REJECTED avec un motif.
+ */
+export async function rejectTransferRequestService(
+  transferRequestId: string,
+  decidedById: string,
+  rejectionReason: string,
+) {
+  const updatedRequest = await db.orm.public.TransferRequest.where((r) =>
+    and(
+      r.id.eq(transferRequestId as Parameters<typeof r.id.eq>[0]),
+      r.status.eq("PENDING" as Parameters<typeof r.status.eq>[0]),
+    ),
+  ).update({
+    status: "REJECTED",
+    decidedById: decidedById as Parameters<
+      typeof db.orm.public.TransferRequest.create
+    >[0]["decidedById"],
+    decidedAt: new Date(),
+    rejectionReason,
+  });
+
+  if (!updatedRequest) {
+    throw new Error("Cette demande a déjà été traitée.");
+  }
+
+  return updatedRequest;
+}
+
 export async function requisitionResourcesService(
   resourceTypeId: string,
   quantity: number,
