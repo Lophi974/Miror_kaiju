@@ -1,0 +1,23 @@
+name: Pull mirror from school repo
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du repo miroir
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Récupérer main depuis le repo de l'école et le pousser ici
+        env:
+          SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
+        run: |
+          git remote add school "https://x-access-token:${SCHOOL_READ_TOKEN}@github.com/ORG_ECOLE/REPO_ECOLE.git"
+          git fetch school main
+          git push origin FETCH_HEAD:main --force
