@@ -2,7 +2,7 @@ name: Pull mirror from school repo
 on:
   schedule:
     - cron: "*/15 * * * *"  # toutes les 15 minutes
-  workflow_dispatch: {} 
+  workflow_dispatch: {}
 
 jobs:
   mirror:
@@ -13,7 +13,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Debug token (sans le révéler)
+      - name: Debug token (sans le révéler) — À SUPPRIMER une fois le problème résolu
         env:
           SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
         run: |
