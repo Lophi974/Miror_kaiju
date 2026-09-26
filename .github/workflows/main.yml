@@ -1,4 +1,5 @@
 name: Pull mirror from school repo
+
 on:
   schedule:
     - cron: "*/15 * * * *"  # toutes les 15 minutes
@@ -13,19 +14,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Debug token (sans le révéler) — À SUPPRIMER une fois le problème résolu
-        env:
-          SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
-        run: |
-          echo "Longueur du token: ${#SCHOOL_READ_TOKEN}"
-          echo "Préfixe: ${SCHOOL_READ_TOKEN:0:4}"
-          echo "Test d'accès via l'API :"
-          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: token ${SCHOOL_READ_TOKEN}" https://api.github.com/repos/EpitechBachelorPromo2028/B-SPE-331-RUN-3-1-kaiju-1
-
       - name: Récupérer main depuis le repo de l'école et le pousser ici
         env:
           SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
         run: |
-          git remote add school "https://x-access-token:${SCHOOL_READ_TOKEN}@github.com/EpitechBachelorPromo2028/B-SPE-331-RUN-3-1-kaiju-1.git"
+          git remote add school "https://${SCHOOL_READ_TOKEN}@github.com/EpitechBachelorPromo2028/B-SPE-331-RUN-3-1-kaiju-1.git"
           git fetch school main
           git push origin FETCH_HEAD:main --force
