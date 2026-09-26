@@ -13,6 +13,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Debug token (sans le révéler)
+        env:
+          SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
+        run: |
+          echo "Longueur du token: ${#SCHOOL_READ_TOKEN}"
+          echo "Préfixe: ${SCHOOL_READ_TOKEN:0:4}"
+          echo "Test d'accès via l'API :"
+          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: token ${SCHOOL_READ_TOKEN}" https://api.github.com/repos/EpitechBachelorPromo2028/B-SPE-331-RUN-3-1-kaiju-1
+
       - name: Récupérer main depuis le repo de l'école et le pousser ici
         env:
           SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
