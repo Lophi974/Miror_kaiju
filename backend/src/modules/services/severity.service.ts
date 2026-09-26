@@ -7,21 +7,25 @@ export async function getSeverityForOneQuarterService() {
     return severities;
   } catch (error) {
     console.error("Error fetching severity for one quarter:", error);
-    throw new Error("Failed to fetch severity for one quarter");
+    throw new Error("Impossible de récupérer le niveau de sévérité.");
   }
 }
 
 export async function changeSeverityForAllQuartersService(newSeverity: number) {
   try {
+    const before = await db.orm.public.DistrictSeverity.all();
+
     const updatedSeverities = await db.orm.public.DistrictSeverity.where(() =>
       all(),
     ).updateAll({
       level: newSeverity,
     });
 
+    const after = await db.orm.public.DistrictSeverity.all();
+
     return updatedSeverities;
   } catch (error) {
     console.error("Error updating severity for all quarters:", error);
-    throw new Error("Failed to update severity for all quarters");
+    throw new Error("Impossible de modifier le niveau de sévérité des quartiers.");
   }
 }

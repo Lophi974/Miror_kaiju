@@ -151,6 +151,18 @@ export const contract = defineContract({}, ({ field, model, rel }) => {
     },
   });
 
+  // Table de liaison légère quartier <-> type de ressource : juste les deux
+  // colonnes de jointure + une quantité. Contrairement à QuarterResource,
+  // pas de suivi initial/courant/updatedAt.
+  const QuarterResourceAmount = model("QuarterResourceAmount", {
+    fields: {
+      id: field.id.uuidv7String(),
+      quarterId: field.uuidString(),
+      resourceTypeId: field.uuidString(),
+      amount: field.int(),
+    },
+  });
+
   const DistrictSeverity = model("DistrictSeverity", {
     fields: {
       id: field.id.uuidv7String(),
@@ -295,6 +307,7 @@ export const contract = defineContract({}, ({ field, model, rel }) => {
       Quarter: Quarter.relations({
         users: rel.hasMany(User, { by: "quarterId" }),
         resources: rel.hasMany(QuarterResource, { by: "quarterId" }),
+        resourceAmounts: rel.hasMany(QuarterResourceAmount, { by: "quarterId" }),
         severity: rel.hasOne(DistrictSeverity, { by: "quarterId" }),
         adjacentAsA: rel.hasMany(QuarterAdjacency, { by: "quarterAId" }),
         adjacentAsB: rel.hasMany(QuarterAdjacency, { by: "quarterBId" }),
@@ -339,6 +352,7 @@ export const contract = defineContract({}, ({ field, model, rel }) => {
 
       ResourceType: ResourceType.relations({
         quarterResources: rel.hasMany(QuarterResource, { by: "resourceTypeId" }),
+        quarterResourceAmounts: rel.hasMany(QuarterResourceAmount, { by: "resourceTypeId" }),
         transferRequests: rel.hasMany(TransferRequest, { by: "resourceTypeId" }),
         reservations: rel.hasMany(ReservationRequest, { by: "resourceTypeId" }),
         conflictNotifications: rel.hasMany(ConflictNotification, { by: "resourceTypeId" }),
@@ -354,6 +368,19 @@ export const contract = defineContract({}, ({ field, model, rel }) => {
           uniques: [constraints.unique([fields.quarterId, fields.resourceTypeId])],
         }))
         .sql({ table: "quarter_resources" }),
+
+      QuarterResourceAmount: QuarterResourceAmount.relations({
+        quarter: rel
+          .belongsTo(Quarter, { from: "quarterId", to: "id" })
+          .sql({ fk: { onDelete: "cascade" } }),
+        resourceType: rel
+          .belongsTo(ResourceType, { from: "resourceTypeId", to: "id" })
+          .sql({ fk: { onDelete: "restrict" } }),
+      })
+        .attributes(({ fields, constraints }) => ({
+          uniques: [constraints.unique([fields.quarterId, fields.resourceTypeId])],
+        }))
+        .sql({ table: "quarter_resource_amounts" }),
 
       DistrictSeverity: DistrictSeverity.relations({
         quarter: rel.belongsTo(Quarter, { from: "quarterId", to: "id" }).sql({ fk: { onDelete: "cascade" } }),

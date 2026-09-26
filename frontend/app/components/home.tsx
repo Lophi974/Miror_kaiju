@@ -8,7 +8,8 @@ import { fetchAllQuarter } from "../../fetch/ressources";
 import { changeSeverityLevel } from "../../fetch/severity";
 import { fetchMe } from "@/fetch/auth";
 import { useAuth } from "../contexte/provider";
-import { io as socketIO, Socket } from "socket.io-client";
+import { getSocket } from "../contexte/socket";
+import { updateThreshold } from "../../fetch/ressources";
 
 type ZoneId = "A" | "E" | "X" | "W" | "Z";
 
@@ -121,14 +122,23 @@ function getZoneCenter(id: ZoneId): [number, number] {
 
 export default function ZoneMap({
   onPopupChange,
+  onLevelChange,
 }: {
   onPopupChange: (isOpen: boolean) => void;
+  onLevelChange?: (level: number | null) => void;
 }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
 
   const [activeZone, setActiveZone] = useState<ZoneId | null>(null);
   const [activeLevel, setActiveLevel] = useState<number | null>(null);
+  // Seuil de rétention, identique pour tous les quartiers
   const [retentionLevel, setRetentionLevel] = useState<number | null>(null);
+  // id backend -> code de zone, pour router les événements socket
+  const zoneByQuarterId = useRef<Record<string, ZoneId>>({});
+
+  // Réglage du seuil par le CD (niveau 5)
+  const [thresholdInput, setThresholdInput] = useState(30);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
 
   // Ligne entre la zone cliquée et la popup
   const mapRef = useRef<HTMLDivElement>(null);
@@ -174,7 +184,15 @@ export default function ZoneMap({
 
     const quarters: Quarter[] = quartersRes?.data ?? [];
 
-    setRetentionLevel(quartersRes?.data[0]?.treshHoldPercent ?? null);
+    setRetentionLevel(quarters[0]?.treshHoldPercent ?? null);
+
+    zoneByQuarterId.current = quarters.reduce<Record<string, ZoneId>>(
+      (acc, q) => {
+        acc[q.id] = q.code as ZoneId;
+        return acc;
+      },
+      {},
+    );
 
     // code -> id, ex: { A: "01a0c7b1-...", E: "01a0c7b1-..." }
     const quarterIdByCode = quarters.reduce<Partial<Record<ZoneId, string>>>(
@@ -222,69 +240,103 @@ export default function ZoneMap({
     fetchAllZonesResources();
   }, [fetchAllZonesResources]);
 
-  // Connexion Socket.IO : quand le backend diffuse un changement de niveau,
-  // on met à jour l'affichage local sans que l'utilisateur ait à recharger.
+  // Connexion Socket.IO : le backend diffuse les changements de niveau, de
+  // stock et de seuil, on met à jour l'affichage sans recharger.
   useEffect(() => {
-    const socket: Socket = socketIO(
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:1919",
-      { withCredentials: true },
-    );
+    const socket = getSocket();
 
-    socket.on("alertLevelChange", (payload: { level: number }) => {
+    const handleAlertLevelChange = (payload: { level: number }) => {
       console.log("[SOCKET] alertLevelChange reçu :", payload);
       setActiveLevel(payload.level);
-      // Le seuil de rétention dépend du quartier, pas du niveau global, donc
-      // on ne le retouche pas ici -- mais on rafraîchit les ressources, car
-      // un changement de niveau peut s'accompagner de mouvements de stock.
-      fetchAllZonesResources();
-    });
+    };
+
+    const handleResourceChange = (payload: {
+        quarterId: string;
+        resourceTypeId: string;
+        currentQuantity: number;
+      }) => {
+        console.log("[SOCKET] resourceChange reçu :", payload);
+        const zone = zoneByQuarterId.current[payload.quarterId];
+        if (!zone) return;
+
+        setResourcesByZone((current) => ({
+          ...current,
+          [zone]: (current[zone] ?? []).map((r) =>
+            r.resourceTypeId === payload.resourceTypeId
+              ? { ...r, currentQuantity: payload.currentQuantity }
+              : r,
+          ),
+        }));
+      };
+
+    const handleThresholdChange = (payload: { treshHoldPercent: number }) => {
+      console.log("[SOCKET] thresholdChange reçu :", payload);
+      setRetentionLevel(payload.treshHoldPercent);
+    };
+
+    socket.on("alertLevelChange", handleAlertLevelChange);
+    socket.on("resourceChange", handleResourceChange);
+    socket.on("thresholdChange", handleThresholdChange);
 
     return () => {
-      socket.disconnect();
+      socket.off("alertLevelChange", handleAlertLevelChange);
+      socket.off("resourceChange", handleResourceChange);
+      socket.off("thresholdChange", handleThresholdChange);
     };
-  }, [fetchAllZonesResources]);
+  }, []);
 
-  // async function handleChangeLevel(level: number) {
-  //   const conf = confirm(
-  //     "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
-  //   );
+  // Le niveau est partagé avec la page (bouton de demande, panneau QC)
+  useEffect(() => {
+    onLevelChange?.(activeLevel);
+  }, [activeLevel, onLevelChange]);
 
-  //   if (!conf) {
-  //     return;
-  //   }
+  async function handleChangeThreshold() {
+    setThresholdError(null);
+    const response = await updateThreshold(thresholdInput);
 
-  //   const update = () => {
-  //     const rect = mapRef.current?.getBoundingClientRect();
-  //     if (!rect) return;
-  //     const [cx, cy] = getZoneCenter(activeZone);
-  //     setLine({
-  //       x1: rect.left + (cx / 100) * rect.width,
-  //       y1: rect.top + (cy / 100) * rect.height,
-  //       x2: window.innerWidth - 24 - 320, // bord gauche de la popup
-  //       y2: 96 + 40, // un peu sous le haut de la popup
-  //     });
-  //   };
+    // En cas de succès, l'affichage est mis à jour par le socket thresholdChange
+    if (!response?.success) {
+      setThresholdError(response?.message || "Erreur lors du changement de seuil");
+    }
+  }
 
-  //   update();
-  //   window.addEventListener("resize", update);
-  //   window.addEventListener("scroll", update);
-  //   return () => {
-  //     window.removeEventListener("resize", update);
-  //     window.removeEventListener("scroll", update);
-  //   };
-  // }, [activeZone]);
+  // Recalcule la position de la ligne quand on change de zone / qu'on resize / qu'on scroll
+  useEffect(() => {
+    if (!activeZone) {
+      setLine(null);
+      return;
+    }
+
+    const update = () => {
+      const rect = mapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const [cx, cy] = getZoneCenter(activeZone);
+      setLine({
+        x1: rect.left + (cx / 100) * rect.width,
+        y1: rect.top + (cy / 100) * rect.height,
+        x2: window.innerWidth / 2 + 358, // bord gauche de la popup
+        y2: 81 + 40, // un peu sous le haut de la popup
+      });
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [activeZone]);
 
   async function handleChangeLevel(level: number) {
-  if (level < 1 || level > 5) {
-    return;
-  }
-
-  const conf = confirm(
-    "Êtes-vous sûr de vouloir changer le niveau de sévérité ?",
-  );
-  if (!conf) {
-    return;
-  }
+    // On utilise directement "level" (le paramètre reçu au clic), jamais
+    // "activeLevel" ici : setActiveLevel est asynchrone, donc juste après
+    // l'avoir appelé, "activeLevel" contiendrait encore l'ANCIENNE valeur
+    // (celle du rendu précédent), pas celle qu'on vient de sélectionner.
+    // C'est ce qui causait l'incrément "d'un cran de retard".
+    if (level < 1 || level > 5) {
+      return;
+    }
 
     setActiveLevel(level);
 
@@ -299,22 +351,21 @@ export default function ZoneMap({
     }
   }
 
+  console.log("test de user", user);
 
   return (
-    <main className="min-h-screen bg-[#11253C] pt-20">
+    <main className="min-h-screen bg-[#11253C] pt-8">
       {/* Toast niveau de sévérité */}
       <div
         role="status"
         style={toast ? { backgroundColor: LEVEL_COLORS[toast.level] } : undefined}
-        className={`fixed top-6 right-6 z-60 rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${
-          toast && (toast.level === 2 || toast.level === 3)
+        className={`fixed top-6 right-6 z-[60] rounded-xl px-5 py-3 font-semibold shadow-2xl transition-all duration-300 ease-out ${toast && (toast.level === 2 || toast.level === 3)
             ? "text-black"
             : "text-white"
-        } ${
-          toast?.show
+          } ${toast?.show
             ? "translate-x-0 opacity-100"
             : "translate-x-[120%] opacity-0 pointer-events-none"
-        }`}
+          }`}
       >
         {toast && `Niveau de sévérité changé : niveau ${toast.level}`}
       </div>
@@ -332,7 +383,7 @@ export default function ZoneMap({
 
       <div
         ref={mapRef}
-        className="relative w-full max-w-200 aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] "
+        className="relative right-[31px] w-full max-w-[730px] aspect-square mx-auto border-3 rounded-lg border-[#113554] bg-[#061A2C] "
       >
         {/* Carte + teinte, isolées du fond */}
         <div className="absolute inset-0 isolate">
@@ -383,9 +434,9 @@ export default function ZoneMap({
                 style={
                   isActive
                     ? {
-                        fill: darken(baseColor),
-                        stroke: darken(baseColor),
-                      }
+                      fill: darken(baseColor),
+                      stroke: darken(baseColor),
+                    }
                     : undefined
                 }
                 fillOpacity={isActive ? 0.55 : 1}
@@ -394,7 +445,6 @@ export default function ZoneMap({
                 className="cursor-pointer fill-transparent stroke-transparent transition-all duration-300 hover:fill-white/10"
                 onClick={() => {
                   setActiveZone(id);
-                  onPopupChange(true);
                 }}
               />
             );
@@ -403,7 +453,7 @@ export default function ZoneMap({
 
         {/* Ligne entre la zone et la popup */}
         {line && activeZone && (
-          <svg className="fixed inset-0 w-full h-full pointer-events-none z-45">
+          <svg className="fixed inset-0 w-full h-full pointer-events-none z-[45]">
             <line
               key={activeZone}
               x1={line.x1}
@@ -429,18 +479,17 @@ export default function ZoneMap({
 
         {/* Popup */}
         <div
-          className={`fixed top-24 right-6 w-80 max-h-[calc(100vh-8rem)] overflow-y-auto
-          rounded-4xl bg-[#11253C] text-white shadow-2xl border border-white/20
+          className={`fixed top-[15px] left-[calc(50%+358px)] w-80 max-h-[calc(100vh-8rem)] overflow-y-auto
+          rounded-[2rem] bg-[#11253C] text-white shadow-2xl border border-white/20
           transform transition-all duration-300 ease-out z-50
-          ${
-            activeZone
+          ${activeZone
               ? "translate-x-0 scale-100 opacity-100"
               : "translate-x-[120%] scale-95 opacity-0 pointer-events-none"
-          }`}
+            }`}
         >
           {activeZone && (
             <div className="p-6 flex flex-col">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-3">
                 <h2
                   className="text-2xl font-bold"
                   style={{ color: ZONES[activeZone].color }}
@@ -450,13 +499,16 @@ export default function ZoneMap({
                 <button
                   onClick={() => {
                     setActiveZone(null);
-                    onPopupChange(false);
                   }}
                   className="text-white/50 hover:text-white hover:rotate-90 transition-all duration-200 text-xl leading-none"
                 >
                   ✕
                 </button>
               </div>
+
+              <p className="text-sm text-white/50 mb-4">
+                Seuil de rétention : {retentionLevel ?? "?"} %
+              </p>
 
               <h3 className="text-sm uppercase tracking-wide text-white/50 mb-3">
                 Ressources
@@ -482,19 +534,17 @@ export default function ZoneMap({
                             animation: "fadeUp 0.4s ease-out both",
                             animationDelay: `${i * 80}ms`,
                           }}
-                          className={`rounded-xl px-4 py-2 text-sm border flex items-center justify-between gap-2 transition-transform duration-200 hover:scale-[1.03] ${
-                            critical
+                          className={`rounded-xl px-4 py-2 text-sm border flex items-center justify-between gap-2 transition-transform duration-200 hover:scale-[1.03] ${critical
                               ? "bg-red-500/10 border-red-500/50 text-red-400"
                               : "bg-white/5 border-white/10"
-                          }`}
+                            }`}
                         >
                           <span className="font-medium">
                             {r.resourceType.name}
                           </span>
                           <span
-                            className={`whitespace-nowrap ${
-                              critical ? "text-red-400" : "text-white/70"
-                            }`}
+                            className={`whitespace-nowrap ${critical ? "text-red-400" : "text-white/70"
+                              }`}
                           >
                             {r.currentQuantity}/{r.initialQuantity}{" "}
                             {r.resourceType.unit}
@@ -515,14 +565,13 @@ export default function ZoneMap({
             className="fixed inset-0 bg-black/0 z-40"
             onClick={() => {
               setActiveZone(null);
-              onPopupChange(false);
             }}
           />
         )}
       </div>
 
       {user != null && user.role == "CD" && (
-        <div className="relative z-45 flex flex-wrap justify-center gap-3 pt-6">
+        <div className="relative right-[31px] z-45 flex flex-wrap justify-center gap-3 pt-6">
           {[
             { level: 1, color: "bg-green-500 hover:bg-green-400" },
             { level: 2, color: "bg-lime-500 hover:bg-lime-400" },
@@ -536,13 +585,41 @@ export default function ZoneMap({
               onClick={() => {
                 handleChangeLevel(level);
               }}
-              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95 ${color} ${
-                activeLevel === level ? "ring-4 ring-white/50" : ""
-              }`}
+              className={`rounded-lg px-5 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95 ${color} ${activeLevel === level ? "ring-4 ring-white/50" : ""
+                }`}
             >
               Niveau {level}
             </button>
           ))}
+        </div>
+      )}
+
+      {user != null && user.role == "CD" && activeLevel === 5 && (
+        <div className="relative right-[31px] z-45 mx-auto mt-4 w-full max-w-md rounded-xl border border-white/10 bg-white/5 p-3 text-white">
+          <label className="mb-2 block text-xs uppercase tracking-wide text-white/50">
+            Seuil de rétention de tous les quartiers (15 à 30 %) — actuel :{" "}
+            {retentionLevel ?? "?"} %
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={15}
+              max={30}
+              value={thresholdInput}
+              onChange={(event) => setThresholdInput(Number(event.target.value))}
+              className="w-20 rounded-lg border border-white/20 bg-[#0a1420] px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-400"
+            />
+            <button
+              type="button"
+              onClick={handleChangeThreshold}
+              className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-500"
+            >
+              Appliquer à toute la ville
+            </button>
+          </div>
+          {thresholdError && (
+            <p className="mt-2 text-xs text-red-400">{thresholdError}</p>
+          )}
         </div>
       )}
     </main>

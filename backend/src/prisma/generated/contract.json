@@ -28,6 +28,10 @@
       "model": "QuarterAdjacency",
       "namespace": "public"
     },
+    "quarter_resource_amounts": {
+      "model": "QuarterResourceAmount",
+      "namespace": "public"
+    },
     "quarter_resources": {
       "model": "QuarterResource",
       "namespace": "public"
@@ -1003,6 +1007,21 @@
                   "namespace": "public"
                 }
               },
+              "resourceAmounts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "quarterId"
+                  ]
+                },
+                "to": {
+                  "model": "QuarterResourceAmount",
+                  "namespace": "public"
+                }
+              },
               "resources": {
                 "cardinality": "1:N",
                 "on": {
@@ -1286,6 +1305,99 @@
               "table": "quarter_resources"
             }
           },
+          "QuarterResourceAmount": {
+            "fields": {
+              "amount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/char@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "quarterId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/char@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "resourceTypeId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sql/char@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              }
+            },
+            "relations": {
+              "quarter": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "quarterId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Quarter",
+                  "namespace": "public"
+                }
+              },
+              "resourceType": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "resourceTypeId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "ResourceType",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "amount": {
+                  "column": "amount"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "quarterId": {
+                  "column": "quarterId"
+                },
+                "resourceTypeId": {
+                  "column": "resourceTypeId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "quarter_resource_amounts"
+            }
+          },
           "ReservationRequest": {
             "fields": {
               "createdAt": {
@@ -1491,6 +1603,21 @@
                 },
                 "to": {
                   "model": "ConflictNotification",
+                  "namespace": "public"
+                }
+              },
+              "quarterResourceAmounts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "resourceTypeId"
+                  ]
+                },
+                "to": {
+                  "model": "QuarterResourceAmount",
                   "namespace": "public"
                 }
               },
@@ -2988,6 +3115,106 @@
                 }
               ]
             },
+            "quarter_resource_amounts": {
+              "columns": {
+                "amount": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "sql/char@1",
+                  "nativeType": "character",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "quarterId": {
+                  "codecId": "sql/char@1",
+                  "nativeType": "character",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                },
+                "resourceTypeId": {
+                  "codecId": "sql/char@1",
+                  "nativeType": "character",
+                  "nullable": false,
+                  "typeParams": {
+                    "length": 36
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "quarterId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "quarter_resource_amounts"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "quarters"
+                  }
+                },
+                {
+                  "onDelete": "restrict",
+                  "source": {
+                    "columns": [
+                      "resourceTypeId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "quarter_resource_amounts"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "resource_types"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "quarterId"
+                  ],
+                  "name": "quarter_resource_amounts_quarterId_idx_ceb22f71",
+                  "prefix": "quarter_resource_amounts_quarterId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "resourceTypeId"
+                  ],
+                  "name": "quarter_resource_amounts_resourceTypeId_idx_04cc477c",
+                  "prefix": "quarter_resource_amounts_resourceTypeId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "quarterId",
+                    "resourceTypeId"
+                  ]
+                }
+              ]
+            },
             "quarter_resources": {
               "columns": {
                 "currentQuantity": {
@@ -3908,10 +4135,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "f404822236475e6bddc6e180765cd5a919f408808e333a97079bfbc7d9a20cbd"
+    "storageHash": "da02e4ace0c5f78a4c5ead465d6b91980d93e7fc00990a29d9f6a2f43619f558"
   },
   "execution": {
-    "executionHash": "d0ad5c9dc86bb9861779584f0f08f91b659ede3311b0d99fdcd6a3ebbc667be3",
+    "executionHash": "a79af4a2c5275f28620167d0dcd017447b6241865dc16033f0aea825b7203e80",
     "mutations": {
       "defaults": [
         {
@@ -3993,6 +4220,17 @@
             "column": "id",
             "namespace": "public",
             "table": "quarter_adjacencies"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv7",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "quarter_resource_amounts"
           }
         },
         {

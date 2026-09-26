@@ -15,18 +15,22 @@ export async function loginUser(
   if (!email || !password) {
     return res
       .status(400)
-      .json({ success: false, message: "Email and password are required" });
+      .json({ success: false, message: "L'email et le mot de passe sont requis." });
   }
 
   console.log("loginUser email:", email);
   console.log("loginUser password:", password);
 
-  const { id, role, hashedPassword } = (await getUserByEmail(email)) || {};
+  const { id, role, hashedPassword, name, quarterId } =
+    (await getUserByEmail(email)) || {};
 
-  if (!id || !role || !hashedPassword) {
+  // quarterId est légitimement absent pour CD et LC (portée ville entière),
+  // donc on ne le vérifie pas ici -- seul un id/role/hashedPassword/name
+  // manquant signifie "utilisateur introuvable".
+  if (!id || !role || !hashedPassword || !name) {
     return res
       .status(401)
-      .json({ success: false, message: "Invalid email or password" });
+      .json({ success: false, message: "Email ou mot de passe incorrect." });
   }
 
   const passwordWithPepper = password + PEPPER;
@@ -39,10 +43,15 @@ export async function loginUser(
   if (!isPasswordValid) {
     return res
       .status(401)
-      .json({ success: false, message: "Invalid email or password" });
+      .json({ success: false, message: "Email ou mot de passe incorrect." });
   }
 
-  const token = createToken({ user_id: id, role: role });
+  const token = createToken({
+    user_id: id,
+    role: role,
+    name: name,
+    quarterId: quarterId ?? null,
+  });
 
   return res
     .cookie("token", token, {
@@ -51,6 +60,27 @@ export async function loginUser(
       maxAge: 2 * 24 * 60 * 60 * 1000,
     })
     .status(200)
-    .json({ success: true, message: "Login successful", token });
+    .json({ success: true, message: "Connexion réussie.", token });
 }
 
+export async function me(req: any, res: any) {
+  const userInfo = {
+    userId: req.user.sub,
+    role: req.user.role,
+    name: req.user.name,
+    quarterId: req.user.quarterId ?? null,
+  };
+  console.log(userInfo);
+  return res.status(200).json({ success: true, user: userInfo });
+}
+
+export async function disconnect(req: any, res: any) {
+  return res
+    .clearCookie("token", {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    })
+    .status(200)
+    .json({ success: true, message: "Déconnexion réussie" });
+}

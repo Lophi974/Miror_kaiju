@@ -3,35 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { logoutUser } from "@/fetch/auth";
-
-type StoredUser = {
-  name?: string | null;
-  username?: string | null;
-  email?: string;
-};
-
-function getStoredUser(): StoredUser {
-  if (typeof window === "undefined") return {};
-
-  try {
-    return JSON.parse(localStorage.getItem("user") ?? "{}");
-  } catch {
-    return {};
-  }
-}
+import { useAuth } from "../contexte/provider";
 
 export default function ProfileMenu() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [user] = useState<StoredUser>(getStoredUser);
-  const displayName = user.name || user.username || user.email || "Profil";
+  const displayName = user?.name || "Profil";
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await logoutUser();
+      await logout();
     } finally {
       router.push("/login");
     }
@@ -56,17 +40,39 @@ export default function ProfileMenu() {
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-56 rounded-xl border border-white/15 bg-[#0a1420] p-2 shadow-2xl"
+          className="absolute right-0 mt-1 w-40 rounded-xl border border-white/15 bg-[#0a1420] p-1 shadow-2xl"
         >
-          <p className="truncate px-3 py-2 text-sm text-white/50">{user.email}</p>
+          {user && (
+            <>
+              <p className="truncate px-3 py-2 text-sm text-white/50">
+                {user.name}
+              </p>
+
+              {user.role === "CD" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => router.push("/register")}
+                  className="w-full rounded-lg px-3 py-2 text-left font-medium text-cyan-300 transition hover:bg-cyan-500/15"
+                >
+                  Enregistrer une personne
+                </button>
+              )}
+            </>
+          )}
+
           <button
             type="button"
             role="menuitem"
-            onClick={handleLogout}
+            onClick={() => (user ? handleLogout() : router.push("/login"))}
             disabled={isLoggingOut}
             className="w-full rounded-lg px-3 py-2 text-left font-medium text-red-300 transition hover:bg-red-500/15 disabled:opacity-60"
           >
-            {isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
+            {user
+              ? isLoggingOut
+                ? "Déconnexion..."
+                : "Se déconnecter"
+              : "Se connecter"}
           </button>
         </div>
       )}

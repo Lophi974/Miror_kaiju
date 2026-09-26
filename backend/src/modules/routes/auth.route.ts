@@ -1,8 +1,11 @@
 import { Router } from "express";
-import { loginUser } from "../controllers/auth.controller";
+import { loginUser, me, disconnect } from "../controllers/auth.controller";
+import { authenticateToken } from "../middleware/authenticateToken";
 
 const router = Router();
 
 router.post("/login", loginUser);
+router.get("/me", authenticateToken, me);
+router.post("/logout", authenticateToken, disconnect);
 
 export default router;

@@ -6,10 +6,10 @@ export async function getUserByEmail(email: string) {
       u.email.eq(email),
     ).first();
     return user
-      ? { id: user.id, role: user.role, hashedPassword: user.passwordHash }
+      ? { id: user.id, role: user.role, hashedPassword: user.passwordHash, name: user.name, quarterId: user.quarterId }
       : null;
   } catch (error) {
     console.error("Error fetching user by email:", error);
-    throw new Error("Failed to fetch user");
+    throw new Error("Impossible de récupérer l'utilisateur.");
   }
 }
