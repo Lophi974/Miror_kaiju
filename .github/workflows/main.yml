@@ -1,0 +1,45 @@
+name: Pull mirror from school repo
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # toutes les 15 minutes
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du repo miroir
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Récupérer main depuis l'école, en préservant .github/workflows
+        env:
+          SCHOOL_READ_TOKEN: ${{ secrets.SCHOOL_READ_TOKEN }}
+        run: |
+          git config user.name "mirror-bot"
+          git config user.email "mirror-bot@users.noreply.github.com"
+
+          # Sauvegarde le workflow AVANT tout écrasement
+          mkdir -p /tmp/keep
+          cp -r .github/workflows /tmp/keep/
+
+          git remote add school "https://${SCHOOL_READ_TOKEN}@github.com/EpitechBachelorPromo2028/B-SPE-331-RUN-3-1-kaiju-1.git"
+          git -c http.https://github.com/.extraheader= fetch school main
+
+          # Remplace tout le contenu par celui de l'école
+          git rm -rf --ignore-unmatch . > /dev/null
+          git checkout FETCH_HEAD -- .
+
+          # Restaure le workflow après l'écrasement
+          mkdir -p .github
+          rm -rf .github/workflows
+          cp -r /tmp/keep/workflows .github/workflows
+
+          git add -A
+          git commit -m "Mirror update from school repo" --allow-empty
+          git push origin main --force
