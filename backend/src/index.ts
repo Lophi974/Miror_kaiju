@@ -8,6 +8,7 @@ import transactionRouter from "./modules/routes/transaction.route";
 import cors from "cors";
 import { createServer } from "node:http";
 import { initializeSocketServer } from "./wc/socket";
+import { CORS_ORIGINS } from "./util/corsOrigins";
 import { startTransferArrivalJob } from "./modules/services/transaction.service";
 
 const app = Express();
@@ -19,7 +20,7 @@ if (isNaN(port)) {
 
 app.use(
   cors({
-    origin: "http://localhost:9001",
+    origin: CORS_ORIGINS,
     credentials: true,
   }),
 );
@@ -38,5 +39,5 @@ initializeSocketServer(server);
 startTransferArrivalJob();
 
 server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on port ${port}`);
 });

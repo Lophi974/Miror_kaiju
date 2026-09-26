@@ -1,13 +1,14 @@
 import "dotenv/config";
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "node:http";
+import { CORS_ORIGINS } from "../util/corsOrigins";
 
 let io: Server | null = null;
 
 export function initializeSocketServer(httpServer: HttpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:9001",
+      origin: CORS_ORIGINS,
       credentials: true,
     },
   });
