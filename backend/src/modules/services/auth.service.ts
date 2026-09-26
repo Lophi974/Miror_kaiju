@@ -10,6 +10,6 @@ export async function getUserByEmail(email: string) {
       : null;
   } catch (error) {
     console.error("Error fetching user by email:", error);
-    throw new Error("Failed to fetch user");
+    throw new Error("Impossible de récupérer l'utilisateur.");
   }
 }

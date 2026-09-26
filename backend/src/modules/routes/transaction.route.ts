@@ -8,6 +8,9 @@ import {
   getQuarterRequestHistory,
   approveTransferRequest,
   rejectTransferRequest,
+  getPendingTransitApprovals,
+  approveTransit,
+  rejectTransit,
 } from "../controllers/transaction.controller";
 import { authenticateToken } from "../middleware/authenticateToken";
 import { ACTION } from "../middleware/rules";
@@ -69,6 +72,26 @@ router.post(
   authenticateToken,
   authorize(ACTION.DECIDE),
   rejectTransferRequest,
+);
+
+router.get(
+  "/transits/pending",
+  authenticateToken,
+  getPendingTransitApprovals,
+);
+
+router.post(
+  "/transits/:id/approve",
+  authenticateToken,
+  authorize(ACTION.DECIDE),
+  approveTransit,
+);
+
+router.post(
+  "/transits/:id/reject",
+  authenticateToken,
+  authorize(ACTION.DECIDE),
+  rejectTransit,
 );
 
 export default router;

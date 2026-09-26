@@ -22,7 +22,7 @@ export function authenticateToken(req: any, res: any, next: any) {
   if (!token) {
     return res
       .status(401)
-      .json({ success: false, message: "Token missing or invalid format" });
+      .json({ success: false, message: "Jeton manquant ou au mauvais format." });
   }
 
   try {
@@ -33,6 +33,6 @@ export function authenticateToken(req: any, res: any, next: any) {
   } catch (error) {
     return res
       .status(403)
-      .json({ success: false, message: "Invalid or expired token" });
+      .json({ success: false, message: "Jeton invalide ou expiré." });
   }
 }

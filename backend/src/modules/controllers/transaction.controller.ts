@@ -1,3 +1,4 @@
+import { broadcastTransferRequestChange } from "../../wc/broadcast";
 import {
   reserveResourcesService,
   isAdjacentQuarter,
@@ -10,6 +11,10 @@ import {
   getQuarterRequestHistoryService,
   approveTransferRequestService,
   rejectTransferRequestService,
+  areAllTransitApprovalsApproved,
+  getPendingTransitApprovalsForQuarterService,
+  approveTransitApprovalService,
+  rejectTransitApprovalService,
 } from "../services/transaction.service";
 
 export async function reserveResources(
@@ -23,7 +28,7 @@ export async function reserveResources(
   if (req.severityLevel < 2)
     return res.status(403).json({
       success: false,
-      message: "Cannot reserve resources at this severity level.",
+      message: "Impossible de réserver des ressources à ce niveau de sévérité.",
     });
 
   try {
@@ -34,7 +39,7 @@ export async function reserveResources(
     if (!quarterId) {
       return res.status(400).json({
         success: false,
-        message: "User does not have a quarter assigned.",
+        message: "Aucun quartier n'est associé à cet utilisateur.",
       });
     }
 
@@ -50,7 +55,7 @@ export async function reserveResources(
     console.error("Error in reserveResources:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while reserving resources.",
+      message: "Une erreur est survenue lors de la réservation.",
     });
   }
 }
@@ -63,7 +68,7 @@ export async function requestRessources(
       targetQuarterId: string;
       sourceQuarterId: string;
     };
-    user: { sub: string; role: string };
+    user: { sub: string; role: string; quarterId: string | null };
     severityLevel: number;
   },
   res: any,
@@ -71,18 +76,28 @@ export async function requestRessources(
   if (req.severityLevel < 3) {
     return res.status(403).json({
       success: false,
-      message: "Cannot request resources at this severity level.",
+      message: "Impossible de demander des ressources à ce niveau de sévérité.",
     });
   }
 
   try {
-    const { resourceId, quantity, targetQuarterId, sourceQuarterId } = req.body;
+    const { resourceId, quantity, targetQuarterId } = req.body;
+    // Un QC demande toujours pour son propre quartier : on ignore le body
+    const sourceQuarterId =
+      req.user.role === "QC" ? req.user.quarterId : req.body.sourceQuarterId;
+
+    if (!sourceQuarterId) {
+      return res.status(400).json({
+        success: false,
+        message: "Aucun quartier n'est associé à cet utilisateur.",
+      });
+    }
     const requestedById = req.user.sub;
 
     if (!quantity || quantity <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Quantity must be a positive number.",
+        message: "La quantité doit être un nombre positif.",
       });
     }
 
@@ -93,7 +108,7 @@ export async function requestRessources(
     if (!isAdjacent) {
       return res.status(400).json({
         success: false,
-        message: "The target quarter is not adjacent to the source quarter.",
+        message: "Le quartier sollicité n'est pas adjacent au quartier demandeur.",
       });
     }
 
@@ -108,7 +123,7 @@ export async function requestRessources(
     if (!hasSufficientResources) {
       return res.status(400).json({
         success: false,
-        message: "The target quarter does not have sufficient resources.",
+        message: "Le quartier sollicité n'a pas assez de ressources au-dessus de son seuil de rétention.",
       });
     }
 
@@ -121,16 +136,17 @@ export async function requestRessources(
       req.severityLevel,
     );
 
+    broadcastTransferRequestChange();
     return res.status(201).json({
       success: true,
-      message: "Transfer request created and pending approval.",
+      message: "Demande de transfert créée, en attente de validation.",
       data: transferRequest,
     });
   } catch (error) {
     console.error("Error in requestRessources:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while requesting resources.",
+      message: "Une erreur est survenue lors de la demande de ressources.",
     });
   }
 }
@@ -153,7 +169,7 @@ export async function transferRessources(
   if (req.severityLevel < 4) {
     return res.status(403).json({
       success: false,
-      message: "Cannot transfer resources at this severity level.",
+      message: "Impossible de transférer des ressources à ce niveau de sévérité.",
     });
   }
 
@@ -169,11 +185,19 @@ export async function transferRessources(
   if (!hasSufficientResources) {
     return res.status(400).json({
       success: false,
-      message: "The target quarter does not have sufficient resources.",
+      message: "Le quartier sollicité n'a pas assez de ressources au-dessus de son seuil de rétention.",
     });
   }
 
   if (isAdjacent) {
+    // Transfert adjacent : LC dès le niveau 4, CD seulement au niveau 5
+    if (req.user.role === "CD" && req.severityLevel < 5) {
+      return res.status(403).json({
+        success: false,
+        message: "Le CD ne peut organiser un transfert adjacent qu'au niveau de sévérité 5.",
+      });
+    }
+
     try {
       const transferRequest = await createPendingTransferRequest(
         sourceQuarterId,
@@ -184,16 +208,17 @@ export async function transferRessources(
         req.severityLevel,
       );
 
+      broadcastTransferRequestChange();
       return res.status(201).json({
         success: true,
-        message: "Transfer request created and pending approval.",
+        message: "Demande de transfert créée, en attente de validation.",
         data: transferRequest,
       });
     } catch (error) {
       console.error("Error in transferRessources:", error);
       return res.status(500).json({
         success: false,
-        message: "An error occurred while transferring resources.",
+        message: "Une erreur est survenue lors du transfert.",
       });
     }
   }
@@ -204,7 +229,7 @@ export async function transferRessources(
     if (!adjacentToSource || adjacentToSource.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No adjacent quarter found for the source quarter.",
+        message: "Aucun quartier adjacent trouvé pour le quartier demandeur.",
       });
     }
 
@@ -220,7 +245,7 @@ export async function transferRessources(
       if (hasSufficientResourcesInAdjacent) {
         return res.status(400).json({
           success: false,
-          message: `The target quarter is not adjacent to the source quarter. However, an adjacent quarter (${adjQuarterId}) has sufficient resources.`,
+          message: `Le quartier sollicité n'est pas adjacent au demandeur, mais un quartier adjacent a assez de ressources : faites-lui la demande en priorité.`,
         });
       }
     }
@@ -237,7 +262,7 @@ export async function transferRessources(
       return res.status(400).json({
         success: false,
         message:
-          "No single-hop transit quarter connects the source and target quarters.",
+          "Aucun quartier de passage ne relie directement ces deux quartiers.",
       });
     }
 
@@ -251,16 +276,17 @@ export async function transferRessources(
       [transitQuarterId],
     );
 
+    broadcastTransferRequestChange();
     return res.status(201).json({
       success: true,
-      message: `Transit request created via quarter ${transitQuarterId}, pending its approval.`,
+      message: "Demande de transit créée, en attente de l'accord du quartier de passage.",
       data: transiteRequest,
     });
   } catch (error) {
     console.error("Error in transferRessources:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while creating transit request.",
+      message: "Une erreur est survenue lors de la création de la demande de transit.",
     });
   }
 }
@@ -281,7 +307,7 @@ export async function requisitionRessources(
   if (req.severityLevel < 4) {
     return res.status(403).json({
       success: false,
-      message: "Cannot requisition resources at this severity level.",
+      message: "Impossible de réquisitionner des ressources à ce niveau de sévérité.",
     });
   }
 
@@ -294,7 +320,7 @@ export async function requisitionRessources(
     if (!quantity || quantity <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Quantity must be a positive number.",
+        message: "La quantité doit être un nombre positif.",
       });
     }
 
@@ -309,7 +335,7 @@ export async function requisitionRessources(
     if (!doesHaveSufficientResources) {
       return res.status(400).json({
         success: false,
-        message: "The source quarter does not have sufficient resources.",
+        message: "Le quartier réquisitionné n'a pas assez de ressources au-dessus de son seuil de rétention.",
       });
     }
 
@@ -322,15 +348,16 @@ export async function requisitionRessources(
       req.severityLevel,
     );
 
+    broadcastTransferRequestChange();
     return res.status(200).json({
       success: true,
-      message: "Resources requisitioned successfully.",
+      message: "Réquisition effectuée avec succès.",
     });
   } catch (error) {
     console.error("Error in requisitionRessources:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while requisitioning resources.",
+      message: "Une erreur est survenue lors de la réquisition.",
     });
   }
 }
@@ -344,7 +371,7 @@ export async function getPendingRequests(
     if (!quarterId) {
       return res.status(400).json({
         success: false,
-        message: "User does not have a quarter assigned.",
+        message: "Aucun quartier n'est associé à cet utilisateur.",
       });
     }
 
@@ -357,7 +384,7 @@ export async function getPendingRequests(
       console.error("Error in getPendingRequests:", error);
       return res.status(500).json({
         success: false,
-        message: "An error occurred while fetching pending requests.",
+        message: "Une erreur est survenue lors de la récupération des demandes en attente.",
       });
     }
   }
@@ -371,7 +398,7 @@ export async function getPendingRequests(
     if (!quarterId) {
       return res.status(400).json({
         success: false,
-        message: "User does not have a quarter assigned.",
+        message: "Aucun quartier n'est associé à cet utilisateur.",
       });
     }
 
@@ -382,7 +409,7 @@ export async function getPendingRequests(
       console.error("Error in getQuarterRequestHistory:", error);
       return res.status(500).json({
         success: false,
-        message: "An error occurred while fetching request history.",
+        message: "Une erreur est survenue lors de la récupération de l'historique.",
       });
     }
   }
@@ -397,7 +424,7 @@ export async function approveTransferRequest(
   if (req.severityLevel < 3) {
     return res.status(403).json({
       success: false,
-      message: "Cannot approve transfer requests at this severity level.",
+      message: "Impossible d'approuver une demande à ce niveau de sévérité.",
     });
   }
 
@@ -406,7 +433,7 @@ export async function approveTransferRequest(
   if (!quarterId) {
     return res.status(400).json({
       success: false,
-      message: "User does not have a quarter assigned.",
+      message: "Aucun quartier n'est associé à cet utilisateur.",
     });
   }
 
@@ -414,13 +441,24 @@ export async function approveTransferRequest(
     const pendingRequests =
       await getPendingRequestsForQuarterService(quarterId);
     const transferRequest = pendingRequests.find(
-      (r) => r.id === req.params.id && r.routeType === "DIRECT",
+      (r) => r.id === req.params.id,
     );
 
     if (!transferRequest) {
       return res.status(404).json({
         success: false,
-        message: "No pending direct request with this id for your quarter.",
+        message: "Aucune demande en attente avec cet identifiant pour votre quartier.",
+      });
+    }
+
+    if (
+      transferRequest.routeType === "TRANSIT" &&
+      !(await areAllTransitApprovalsApproved(transferRequest.id))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Le quartier de passage n'a pas encore approuvé cette demande.",
       });
     }
 
@@ -436,7 +474,7 @@ export async function approveTransferRequest(
       return res.status(400).json({
         success: false,
         message:
-          "Your quarter no longer has sufficient resources above its retention threshold. Reject the request instead.",
+          "Votre quartier n'a plus assez de ressources au-dessus de son seuil de rétention. Refusez plutôt la demande.",
       });
     }
 
@@ -445,6 +483,7 @@ export async function approveTransferRequest(
       req.user.sub,
     );
 
+    broadcastTransferRequestChange();
     return res.status(200).json({
       success: true,
       message: result.message,
@@ -454,7 +493,7 @@ export async function approveTransferRequest(
     console.error("Error in approveTransferRequest:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while approving the transfer request.",
+      message: "Une erreur est survenue lors de l'approbation de la demande.",
     });
   }
 }
@@ -471,7 +510,7 @@ export async function rejectTransferRequest(
   if (req.severityLevel < 3) {
     return res.status(403).json({
       success: false,
-      message: "Cannot reject transfer requests at this severity level.",
+      message: "Impossible de refuser une demande à ce niveau de sévérité.",
     });
   }
 
@@ -481,14 +520,14 @@ export async function rejectTransferRequest(
   if (!quarterId) {
     return res.status(400).json({
       success: false,
-      message: "User does not have a quarter assigned.",
+      message: "Aucun quartier n'est associé à cet utilisateur.",
     });
   }
 
   if (!rejectionReason || !rejectionReason.trim()) {
     return res.status(400).json({
       success: false,
-      message: "A rejection reason is required.",
+      message: "Un motif de refus est requis.",
     });
   }
 
@@ -496,13 +535,13 @@ export async function rejectTransferRequest(
     const pendingRequests =
       await getPendingRequestsForQuarterService(quarterId);
     const transferRequest = pendingRequests.find(
-      (r) => r.id === req.params.id && r.routeType === "DIRECT",
+      (r) => r.id === req.params.id,
     );
 
     if (!transferRequest) {
       return res.status(404).json({
         success: false,
-        message: "No pending direct request with this id for your quarter.",
+        message: "Aucune demande en attente avec cet identifiant pour votre quartier.",
       });
     }
 
@@ -512,16 +551,175 @@ export async function rejectTransferRequest(
       rejectionReason.trim(),
     );
 
+    broadcastTransferRequestChange();
     return res.status(200).json({
       success: true,
-      message: "Transfer request rejected.",
+      message: "Demande de transfert refusée.",
       data: rejectedRequest,
     });
   } catch (error) {
     console.error("Error in rejectTransferRequest:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while rejecting the transfer request.",
+      message: "Une erreur est survenue lors du refus de la demande.",
+    });
+  }
+}
+
+export async function getPendingTransitApprovals(
+  req: { user: { quarterId: string | null } },
+  res: any,
+) {
+  const { quarterId } = req.user;
+
+  if (!quarterId) {
+    return res.status(400).json({
+      success: false,
+      message: "Aucun quartier n'est associé à cet utilisateur.",
+    });
+  }
+
+  try {
+    const pendingApprovals =
+      await getPendingTransitApprovalsForQuarterService(quarterId);
+    return res.status(200).json({ success: true, data: pendingApprovals });
+  } catch (error) {
+    console.error("Error in getPendingTransitApprovals:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Une erreur est survenue lors de la récupération des transits en attente.",
+    });
+  }
+}
+
+export async function approveTransit(
+  req: {
+    params: { id: string };
+    user: { sub: string; role: string; quarterId: string | null };
+    severityLevel: number;
+  },
+  res: any,
+) {
+  if (req.severityLevel < 4) {
+    return res.status(403).json({
+      success: false,
+      message: "Impossible d'approuver un transit à ce niveau de sévérité.",
+    });
+  }
+
+  const { quarterId } = req.user;
+
+  if (!quarterId) {
+    return res.status(400).json({
+      success: false,
+      message: "Aucun quartier n'est associé à cet utilisateur.",
+    });
+  }
+
+  try {
+    const pendingApprovals =
+      await getPendingTransitApprovalsForQuarterService(quarterId);
+    const transitApproval = pendingApprovals.find(
+      (a) => a.transferRequestId === req.params.id,
+    );
+
+    if (!transitApproval) {
+      return res.status(404).json({
+        success: false,
+        message: "Aucun transit en attente pour cette demande dans votre quartier.",
+      });
+    }
+
+    const approvedTransit = await approveTransitApprovalService(
+      transitApproval.id,
+      req.user.sub,
+    );
+
+    broadcastTransferRequestChange();
+    return res.status(200).json({
+      success: true,
+      message:
+        "Transit approuvé. La demande attend maintenant l'accord du quartier fournisseur.",
+      data: approvedTransit,
+    });
+  } catch (error) {
+    console.error("Error in approveTransit:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Une erreur est survenue lors de l'approbation du transit.",
+    });
+  }
+}
+
+export async function rejectTransit(
+  req: {
+    params: { id: string };
+    body: { rejectionReason: string };
+    user: { sub: string; role: string; quarterId: string | null };
+    severityLevel: number;
+  },
+  res: any,
+) {
+  if (req.severityLevel < 4) {
+    return res.status(403).json({
+      success: false,
+      message: "Impossible de refuser un transit à ce niveau de sévérité.",
+    });
+  }
+
+  const { quarterId } = req.user;
+  const { rejectionReason } = req.body;
+
+  if (!quarterId) {
+    return res.status(400).json({
+      success: false,
+      message: "Aucun quartier n'est associé à cet utilisateur.",
+    });
+  }
+
+  if (!rejectionReason || !rejectionReason.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Un motif de refus est requis.",
+    });
+  }
+
+  try {
+    const pendingApprovals =
+      await getPendingTransitApprovalsForQuarterService(quarterId);
+    const transitApproval = pendingApprovals.find(
+      (a) => a.transferRequestId === req.params.id,
+    );
+
+    if (!transitApproval) {
+      return res.status(404).json({
+        success: false,
+        message: "Aucun transit en attente pour cette demande dans votre quartier.",
+      });
+    }
+
+    const { rejectedRequest, maritimeRequest } =
+      await rejectTransitApprovalService(
+        transitApproval.id,
+        transitApproval.transferRequestId,
+        req.user.sub,
+        rejectionReason.trim(),
+        req.severityLevel,
+      );
+
+    broadcastTransferRequestChange();
+    return res.status(200).json({
+      success: true,
+      message: maritimeRequest
+        ? "Transit refusé. Une demande par voie maritime a été créée à la place, en attente de l'accord du quartier fournisseur."
+        : "Transit refusé. Aucune route maritime n'est possible entre ces quartiers.",
+      data: { rejectedRequest, maritimeRequest },
+    });
+  } catch (error) {
+    console.error("Error in rejectTransit:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Une erreur est survenue lors du refus du transit.",
     });
   }
 }

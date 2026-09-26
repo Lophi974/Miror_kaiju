@@ -1,8 +1,13 @@
-import { broadcastSeverityLevel } from "../../wc/broadcast";
+import {
+  broadcastSeverityLevel,
+  broadcastThresholdChange,
+} from "../../wc/broadcast";
 import {
   changeSeverityForAllQuartersService,
   getSeverityForOneQuarterService,
 } from "../services/severity.service";
+import { updateThresholdForAllQuartersService } from "../services/ressource.service";
+import { DEFAULT_THRESHOLD_PERCENT } from "./ressource.controller";
 
 export async function getSeverityForOneQuarter(
   req: any,
@@ -13,7 +18,7 @@ export async function getSeverityForOneQuarter(
   if (!severity) {
     return res
       .status(404)
-      .json({ success: false, message: "No severity data found" });
+      .json({ success: false, message: "Aucun niveau de sévérité trouvé." });
   }
 
   return res.status(200).json({ success: true, data: severity });
@@ -30,7 +35,7 @@ export async function changeSeverityForAllQuarters(
   if (role !== "CD") {
     return res
       .status(403)
-      .json({ success: false, message: "User does not have permission to change severity level." });
+      .json({ success: false, message: "Vous n'avez pas la permission de modifier le niveau de sévérité." });
   }
 
   if (severity === undefined || severity < 1 || severity > 5) {
@@ -38,13 +43,20 @@ export async function changeSeverityForAllQuarters(
       .status(400)
       .json({
         success: false,
-        message: "Severity must be a number between 1 and 5",
+        message: "Le niveau de sévérité doit être un nombre entre 1 et 5.",
       });
   }
 
   const updatedSeverities = await changeSeverityForAllQuartersService(severity);
 
   broadcastSeverityLevel(severity);
+
+  // Seuil abaissé uniquement possible au niveau 5 : en dessous, il repasse à
+  // sa valeur par défaut pour tous les quartiers
+  if (severity < 5) {
+    await updateThresholdForAllQuartersService(DEFAULT_THRESHOLD_PERCENT);
+    broadcastThresholdChange(DEFAULT_THRESHOLD_PERCENT);
+  }
 
   return res.status(200).json({ success: true, data: updatedSeverities });
 }

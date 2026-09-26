@@ -11,7 +11,7 @@ export function authorize(action: string) {
       if (!severity) {
         return res
           .status(404)
-          .json({ success: false, message: "No severity data found" });
+          .json({ success: false, message: "Aucun niveau de sévérité trouvé." });
       }
 
       const severityLevel = severity.level;
@@ -21,7 +21,7 @@ export function authorize(action: string) {
         if (!isAuthorized) {
             return res
             .status(403)
-            .json({ success: false, message: `${userRole} does not have permission to perform this action :${action}.`});
+            .json({ success: false, message: `Le rôle ${userRole} ne peut pas effectuer l'action « ${action} » à ce niveau de sévérité.`});
         }
 
         req.severityLevel = severityLevel;
@@ -32,7 +32,7 @@ export function authorize(action: string) {
       console.error("Error in authorization middleware:", error);
       return res
         .status(500)
-        .json({ success: false, message: "Internal server error" });
+        .json({ success: false, message: "Erreur interne du serveur." });
     }
 
   };

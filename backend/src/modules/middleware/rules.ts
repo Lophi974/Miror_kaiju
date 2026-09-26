@@ -24,6 +24,10 @@ const RULE = {
     roles: ["CD"],
     minLevel: 4,
   },
+  [ACTION.TRESHOLD]: {
+    roles: ["CD"],
+    minLevel: 5,
+  },
   [ACTION.DECIDE]: {
     roles: ["QC"],
     minLevel: 3,
@@ -52,7 +56,9 @@ export function firstStepChecking(
 
   if (action === ACTION.REQUEST && severityLevel === 5) return true;
 
-  if (action === ACTION.TRANSFER && role === "CD" && severityLevel === 5)
+  // CD : transit dès le niveau 4 (le transfert adjacent reste au niveau 5,
+  // vérifié dans transferRessources)
+  if (action === ACTION.TRANSFER && role === "CD" && severityLevel >= 4)
     return true;
 
   return false;

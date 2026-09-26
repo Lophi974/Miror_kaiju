@@ -1,5 +1,10 @@
 import { db } from "../../prisma/db";
 import { and, or } from "@prisma/orm-postgres/orm-client";
+import { Temporal } from "temporal-polyfill";
+import {
+  broadcastResourceChange,
+  broadcastTransferRequestChange,
+} from "../../wc/broadcast";
 
 export async function reserveResourcesService(
   resourceTypeId: string,
@@ -11,7 +16,7 @@ export async function reserveResourcesService(
     throw new Error("La quantité à réserver doit être positive.");
   }
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [quarter, quarterResource] = await Promise.all([
       tx.orm.public.Quarter.where((q) =>
         q.id.eq(quarterId as Parameters<typeof q.id.eq>[0]),
@@ -105,8 +110,14 @@ export async function reserveResourcesService(
       success: true,
       message: `Ressources réservées avec succès. Quantité restante disponible : ${remaining}`,
       reservationId: reservation.id,
+      remaining,
     };
   });
+
+  // Diffusé après le commit : un rollback ne doit pas atteindre le front.
+  broadcastResourceChange(quarterId, resourceTypeId, result.remaining);
+
+  return result;
 }
 
 export async function isAdjacentQuarter(
@@ -122,7 +133,7 @@ export async function isAdjacentQuarter(
   ).first();
 
   if (!quarter1 || !quarter2) {
-    throw new Error("One or both quarters not found.");
+    throw new Error("Un des quartiers (ou les deux) est introuvable.");
   }
 
   if (quarterId1 === quarterId2) {
@@ -159,7 +170,7 @@ export async function getAdjacentQuarterIds(
   ).first();
 
   if (!quarter) {
-    throw new Error("Quarter not found.");
+    throw new Error("Quartier introuvable.");
   }
 
   const adjacencies = await db.orm.public.QuarterAdjacency.where((a) =>
@@ -306,7 +317,7 @@ export async function getPendingRequestsForQuarterService(quarterId: string) {
   ).first();
 
   if (!quarter) {
-    throw new Error("Quarter not found.");
+    throw new Error("Quartier introuvable.");
   }
 
   return db.orm.public.TransferRequest.where((r) =>
@@ -330,7 +341,7 @@ export async function getQuarterRequestHistoryService(quarterId: string) {
   ).first();
 
   if (!quarter) {
-    throw new Error("Quarter not found.");
+    throw new Error("Quartier introuvable.");
   }
 
   const requests = await db.orm.public.TransferRequest.where((r) =>
@@ -345,20 +356,23 @@ export async function getQuarterRequestHistoryService(quarterId: string) {
   ).all();
 
   return requests.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) => Temporal.Instant.compare(b.createdAt, a.createdAt),
   );
 }
 
 /**
- * Approbation d'une demande directe (adjacente) par le QC fournisseur :
- * le stock est déplacé et la demande passe à COMPLETED. Le seuil de
- * rétention est revérifié (le stock a pu bouger depuis la création).
+ * Approbation d'une demande par le QC fournisseur (DIRECT, MARITIME, ou
+ * TRANSIT une fois tous les quartiers de transit d'accord) : le stock du
+ * fournisseur est retiré et la demande passe à IN_TRANSIT. Le demandeur
+ * n'est crédité qu'à l'arrivée (cf. completeArrivedTransfersService).
+ * Le seuil de rétention est revérifié (le stock a pu bouger depuis la
+ * création).
  */
 export async function approveTransferRequestService(
   transferRequestId: string,
   decidedById: string,
 ) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const request = await tx.orm.public.TransferRequest.where((r) =>
       r.id.eq(transferRequestId as Parameters<typeof r.id.eq>[0]),
     ).first();
@@ -366,6 +380,7 @@ export async function approveTransferRequestService(
     if (!request || request.status !== "PENDING") {
       throw new Error("Cette demande n'est plus en attente.");
     }
+
 
     const [supplyingQuarter, supplyingResource, requestingResource] =
       await Promise.all([
@@ -421,19 +436,18 @@ export async function approveTransferRequestService(
 
     // Filtre sur status PENDING : si une autre décision est passée
     // entre-temps (double clic, 2 QC), update() renvoie null.
-    const now = new Date();
+    // decidedAt sert de point de départ au temps de trajet.
     const updatedRequest = await tx.orm.public.TransferRequest.where((r) =>
       and(
         r.id.eq(transferRequestId as Parameters<typeof r.id.eq>[0]),
         r.status.eq("PENDING" as Parameters<typeof r.status.eq>[0]),
       ),
     ).update({
-      status: "COMPLETED",
+      status: "IN_TRANSIT",
       decidedById: decidedById as Parameters<
         typeof tx.orm.public.TransferRequest.create
       >[0]["decidedById"],
-      decidedAt: now,
-      completedAt: now,
+      decidedAt: Temporal.Now.instant(),
     });
 
     if (!updatedRequest) {
@@ -442,23 +456,294 @@ export async function approveTransferRequestService(
 
     const newSupplyingQuantity =
       supplyingResource.currentQuantity - request.quantity;
-    const newRequestingQuantity =
-      requestingResource.currentQuantity + request.quantity;
 
     await tx.orm.public.QuarterResource.where((r) =>
       r.id.eq(supplyingResource.id as Parameters<typeof r.id.eq>[0]),
     ).updateAll({ currentQuantity: newSupplyingQuantity });
 
-    await tx.orm.public.QuarterResource.where((r) =>
-      r.id.eq(requestingResource.id as Parameters<typeof r.id.eq>[0]),
-    ).updateAll({ currentQuantity: newRequestingQuantity });
-
     return {
       success: true,
-      message: `Transfert approuvé : ${request.quantity} unité(s) envoyée(s). Stock restant du fournisseur : ${newSupplyingQuantity}.`,
+      message: `Transfert approuvé : ${request.quantity} unité(s) en route (${getTravelTimeMs(request.routeType) / 1000}s). Stock restant du fournisseur : ${newSupplyingQuantity}.`,
       transferRequest: updatedRequest,
+      supplyingRemaining: newSupplyingQuantity,
     };
   });
+
+  broadcastResourceChange(
+    result.transferRequest.supplyingQuarterId,
+    result.transferRequest.resourceTypeId,
+    result.supplyingRemaining,
+  );
+
+  return result;
+}
+
+/**
+ * Une demande TRANSIT ne peut être approuvée par le fournisseur qu'une fois
+ * que tous les quartiers de passage ont donné leur accord.
+ */
+export async function areAllTransitApprovalsApproved(
+  transferRequestId: string,
+): Promise<boolean> {
+  const transitApprovals = await db.orm.public.TransitApproval.where((a) =>
+    a.transferRequestId.eq(
+      transferRequestId as Parameters<typeof a.transferRequestId.eq>[0],
+    ),
+  ).all();
+
+  return transitApprovals.every((a) => a.status === "APPROVED");
+}
+
+/**
+ * Accords de transit en attente pour ce quartier (il est quartier de
+ * passage d'une demande non-adjacente) — ceux que son QC doit trancher.
+ * Exclut ceux dont la demande n'est plus PENDING (refusée entre-temps par
+ * le fournisseur par exemple).
+ */
+export async function getPendingTransitApprovalsForQuarterService(
+  quarterId: string,
+) {
+  const quarter = await db.orm.public.Quarter.where((q) =>
+    q.id.eq(quarterId as Parameters<typeof q.id.eq>[0]),
+  ).first();
+
+  if (!quarter) {
+    throw new Error("Quartier introuvable.");
+  }
+
+  const transitApprovals = await db.orm.public.TransitApproval.where((a) =>
+    and(
+      a.transitQuarterId.eq(
+        quarterId as Parameters<typeof a.transitQuarterId.eq>[0],
+      ),
+      a.status.eq("PENDING" as Parameters<typeof a.status.eq>[0]),
+    ),
+  ).all();
+
+  const requests = await Promise.all(
+    transitApprovals.map((a) =>
+      db.orm.public.TransferRequest.where((r) =>
+        r.id.eq(a.transferRequestId as Parameters<typeof r.id.eq>[0]),
+      ).first(),
+    ),
+  );
+
+  // On joint la demande pour que le front affiche quantité / quartiers
+  return transitApprovals
+    .map((approval, i) => ({ ...approval, transferRequest: requests[i] }))
+    .filter((a) => a.transferRequest?.status === "PENDING");
+}
+
+/**
+ * Le QC du quartier de transit accepte le passage. La demande reste
+ * PENDING : c'est ensuite au QC fournisseur de l'approuver.
+ */
+export async function approveTransitApprovalService(
+  transitApprovalId: string,
+  approvedById: string,
+) {
+  const updatedApproval = await db.orm.public.TransitApproval.where((a) =>
+    and(
+      a.id.eq(transitApprovalId as Parameters<typeof a.id.eq>[0]),
+      a.status.eq("PENDING" as Parameters<typeof a.status.eq>[0]),
+    ),
+  ).update({
+    status: "APPROVED",
+    approvedById: approvedById as Parameters<
+      typeof db.orm.public.TransitApproval.create
+    >[0]["approvedById"],
+    decidedAt: Temporal.Now.instant(),
+  });
+
+  if (!updatedApproval) {
+    throw new Error("Ce passage a déjà été traité.");
+  }
+
+  return updatedApproval;
+}
+
+/**
+ * Le QC du quartier de transit refuse le passage : la demande TRANSIT est
+ * rejetée (TRANSIT_NOT_APPROVED). Si le demandeur ET le fournisseur ont un
+ * accès mer, une demande MARITIME PENDING est créée à la place, à valider
+ * par le QC fournisseur.
+ */
+export async function rejectTransitApprovalService(
+  transitApprovalId: string,
+  transferRequestId: string,
+  decidedById: string,
+  rejectionReason: string,
+  currentLevel: number,
+) {
+  return db.transaction(async (tx) => {
+    const updatedApproval = await tx.orm.public.TransitApproval.where((a) =>
+      and(
+        a.id.eq(transitApprovalId as Parameters<typeof a.id.eq>[0]),
+        a.status.eq("PENDING" as Parameters<typeof a.status.eq>[0]),
+      ),
+    ).update({
+      status: "REJECTED",
+      approvedById: decidedById as Parameters<
+        typeof tx.orm.public.TransitApproval.create
+      >[0]["approvedById"],
+      decidedAt: Temporal.Now.instant(),
+    });
+
+    if (!updatedApproval) {
+      throw new Error("Ce passage a déjà été traité.");
+    }
+
+    const rejectedRequest = await tx.orm.public.TransferRequest.where((r) =>
+      and(
+        r.id.eq(transferRequestId as Parameters<typeof r.id.eq>[0]),
+        r.status.eq("PENDING" as Parameters<typeof r.status.eq>[0]),
+      ),
+    ).update({
+      status: "REJECTED",
+      decidedById: decidedById as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["decidedById"],
+      decidedAt: Temporal.Now.instant(),
+      rejectionCode: "TRANSIT_NOT_APPROVED",
+      rejectionReason,
+    });
+
+    if (!rejectedRequest) {
+      throw new Error("Cette demande n'est plus en attente.");
+    }
+
+    const [requestingQuarter, supplyingQuarter] = await Promise.all([
+      tx.orm.public.Quarter.where((q) =>
+        q.id.eq(
+          rejectedRequest.requestingQuarterId as Parameters<typeof q.id.eq>[0],
+        ),
+      ).first(),
+      tx.orm.public.Quarter.where((q) =>
+        q.id.eq(
+          rejectedRequest.supplyingQuarterId as Parameters<typeof q.id.eq>[0],
+        ),
+      ).first(),
+    ]);
+
+    if (!requestingQuarter?.hasSeaAccess || !supplyingQuarter?.hasSeaAccess) {
+      return { rejectedRequest, maritimeRequest: null };
+    }
+
+    const maritimeRequest = await tx.orm.public.TransferRequest.create({
+      requestingQuarterId: rejectedRequest.requestingQuarterId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["requestingQuarterId"],
+      supplyingQuarterId: rejectedRequest.supplyingQuarterId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["supplyingQuarterId"],
+      resourceTypeId: rejectedRequest.resourceTypeId as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["resourceTypeId"],
+      quantity: rejectedRequest.quantity,
+      routeType: "MARITIME",
+      status: "PENDING",
+      disasterLevelAtRequest: currentLevel,
+      createdById: rejectedRequest.createdById as Parameters<
+        typeof tx.orm.public.TransferRequest.create
+      >[0]["createdById"],
+    });
+
+    return { rejectedRequest, maritimeRequest };
+  });
+}
+
+// Temps de trajet une fois la demande approuvée. Route maritime : doublé.
+const TRAVEL_TIME_MS = 60 * 1000;
+
+function getTravelTimeMs(routeType: string) {
+  return routeType === "MARITIME" ? TRAVEL_TIME_MS * 2 : TRAVEL_TIME_MS;
+}
+
+/**
+ * Livre les transferts IN_TRANSIT dont le temps de trajet est écoulé :
+ * crédite le quartier demandeur et passe la demande à COMPLETED.
+ * Appelé périodiquement par startTransferArrivalJob.
+ */
+export async function completeArrivedTransfersService() {
+  const inTransitRequests = await db.orm.public.TransferRequest.where((r) =>
+    r.status.eq("IN_TRANSIT" as Parameters<typeof r.status.eq>[0]),
+  ).all();
+
+  const now = Date.now();
+  const arrivedRequests = inTransitRequests.filter(
+    (r) =>
+      r.decidedAt &&
+      r.decidedAt.epochMilliseconds + getTravelTimeMs(r.routeType) <= now,
+  );
+
+  for (const request of arrivedRequests) {
+    const newRequestingQuantity = await db.transaction(async (tx) => {
+      // Filtre sur IN_TRANSIT : évite de créditer deux fois si deux
+      // passages du job se chevauchent.
+      const completedRequest = await tx.orm.public.TransferRequest.where((r) =>
+        and(
+          r.id.eq(request.id as Parameters<typeof r.id.eq>[0]),
+          r.status.eq("IN_TRANSIT" as Parameters<typeof r.status.eq>[0]),
+        ),
+      ).update({ status: "COMPLETED", completedAt: Temporal.Now.instant() });
+
+      if (!completedRequest) {
+        return null;
+      }
+
+      const requestingResource = await tx.orm.public.QuarterResource.where(
+        (r) =>
+          and(
+            r.quarterId.eq(
+              request.requestingQuarterId as Parameters<
+                typeof r.quarterId.eq
+              >[0],
+            ),
+            r.resourceTypeId.eq(
+              request.resourceTypeId as Parameters<
+                typeof r.resourceTypeId.eq
+              >[0],
+            ),
+          ),
+      ).first();
+
+      if (!requestingResource) {
+        throw new Error(
+          `Aucune ressource de ce type pour le quartier demandeur (demande ${request.id}).`,
+        );
+      }
+
+      const newQuantity = requestingResource.currentQuantity + request.quantity;
+
+      await tx.orm.public.QuarterResource.where((r) =>
+        r.id.eq(requestingResource.id as Parameters<typeof r.id.eq>[0]),
+      ).updateAll({ currentQuantity: newQuantity });
+
+      return newQuantity;
+    });
+
+    if (newRequestingQuantity !== null) {
+      broadcastResourceChange(
+        request.requestingQuarterId,
+        request.resourceTypeId,
+        newRequestingQuantity,
+      );
+    }
+  }
+
+  if (arrivedRequests.length > 0) {
+    broadcastTransferRequestChange();
+  }
+
+  return arrivedRequests.length;
+}
+
+export function startTransferArrivalJob(intervalMs = 10 * 1000) {
+  return setInterval(() => {
+    completeArrivedTransfersService().catch((error) =>
+      console.error("Error in transfer arrival job:", error),
+    );
+  }, intervalMs);
 }
 
 /**
@@ -480,7 +765,7 @@ export async function rejectTransferRequestService(
     decidedById: decidedById as Parameters<
       typeof db.orm.public.TransferRequest.create
     >[0]["decidedById"],
-    decidedAt: new Date(),
+    decidedAt: Temporal.Now.instant(),
     rejectionReason,
   });
 
@@ -507,7 +792,7 @@ export async function requisitionResourcesService(
     throw new Error("Impossible de réquisitionner un quartier vers lui-même.");
   }
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [sourceQuarter, sourceResource, targetQuarter, targetResource] =
       await Promise.all([
         tx.orm.public.Quarter.where((q) =>
@@ -607,4 +892,9 @@ export async function requisitionResourcesService(
       targetTotal: newTargetQuantity,
     };
   });
+
+  broadcastResourceChange(sourceQuarterId, resourceTypeId, result.sourceRemaining);
+  broadcastResourceChange(targetQuarterId, resourceTypeId, result.targetTotal);
+
+  return result;
 }
