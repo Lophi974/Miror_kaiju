@@ -54,7 +54,7 @@ return (
             La zone <strong>{log.fromZone}</strong> a fait une demande à la zone{" "}
             <strong>{log.toZone}</strong>
             <span className="block text-xs text-white/50">
-              {log.resource} à {log.horaire} · {formatDate(log.createdAt)}
+              {log.quantity} × {log.resource} · {formatDate(log.createdAt)}
             </span>
           </p>
         </div>

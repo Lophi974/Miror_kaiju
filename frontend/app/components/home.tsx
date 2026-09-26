@@ -8,6 +8,8 @@ import { fetchAllQuarter } from "../../fetch/ressources";
 import { changeSeverityLevel } from "../../fetch/severity";
 import { fetchMe } from "@/fetch/auth";
 import { useAuth } from "../contexte/provider";
+import { getSocket } from "../contexte/socket";
+import { updateThreshold } from "../../fetch/ressources";
 
 type ZoneId = "A" | "E" | "X" | "W" | "Z";
 
@@ -120,14 +122,23 @@ function getZoneCenter(id: ZoneId): [number, number] {
 
 export default function ZoneMap({
   onPopupChange,
+  onLevelChange,
 }: {
   onPopupChange: (isOpen: boolean) => void;
+  onLevelChange?: (level: number | null) => void;
 }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
 
   const [activeZone, setActiveZone] = useState<ZoneId | null>(null);
   const [activeLevel, setActiveLevel] = useState<number | null>(null);
+  // Seuil de rétention, identique pour tous les quartiers
   const [retentionLevel, setRetentionLevel] = useState<number | null>(null);
+  // id backend -> code de zone, pour router les événements socket
+  const zoneByQuarterId = useRef<Record<string, ZoneId>>({});
+
+  // Réglage du seuil par le CD (niveau 5)
+  const [thresholdInput, setThresholdInput] = useState(30);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
 
   // Ligne entre la zone cliquée et la popup
   const mapRef = useRef<HTMLDivElement>(null);
@@ -173,7 +184,15 @@ export default function ZoneMap({
 
     const quarters: Quarter[] = quartersRes?.data ?? [];
 
-    setRetentionLevel(quartersRes?.data[0]?.treshHoldPercent ?? null);
+    setRetentionLevel(quarters[0]?.treshHoldPercent ?? null);
+
+    zoneByQuarterId.current = quarters.reduce<Record<string, ZoneId>>(
+      (acc, q) => {
+        acc[q.id] = q.code as ZoneId;
+        return acc;
+      },
+      {},
+    );
 
     // code -> id, ex: { A: "01a0c7b1-...", E: "01a0c7b1-..." }
     const quarterIdByCode = quarters.reduce<Partial<Record<ZoneId, string>>>(
@@ -220,6 +239,66 @@ export default function ZoneMap({
     loadActiveLevel();
     fetchAllZonesResources();
   }, [fetchAllZonesResources]);
+
+  // Connexion Socket.IO : le backend diffuse les changements de niveau, de
+  // stock et de seuil, on met à jour l'affichage sans recharger.
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleAlertLevelChange = (payload: { level: number }) => {
+      console.log("[SOCKET] alertLevelChange reçu :", payload);
+      setActiveLevel(payload.level);
+    };
+
+    const handleResourceChange = (payload: {
+        quarterId: string;
+        resourceTypeId: string;
+        currentQuantity: number;
+      }) => {
+        console.log("[SOCKET] resourceChange reçu :", payload);
+        const zone = zoneByQuarterId.current[payload.quarterId];
+        if (!zone) return;
+
+        setResourcesByZone((current) => ({
+          ...current,
+          [zone]: (current[zone] ?? []).map((r) =>
+            r.resourceTypeId === payload.resourceTypeId
+              ? { ...r, currentQuantity: payload.currentQuantity }
+              : r,
+          ),
+        }));
+      };
+
+    const handleThresholdChange = (payload: { treshHoldPercent: number }) => {
+      console.log("[SOCKET] thresholdChange reçu :", payload);
+      setRetentionLevel(payload.treshHoldPercent);
+    };
+
+    socket.on("alertLevelChange", handleAlertLevelChange);
+    socket.on("resourceChange", handleResourceChange);
+    socket.on("thresholdChange", handleThresholdChange);
+
+    return () => {
+      socket.off("alertLevelChange", handleAlertLevelChange);
+      socket.off("resourceChange", handleResourceChange);
+      socket.off("thresholdChange", handleThresholdChange);
+    };
+  }, []);
+
+  // Le niveau est partagé avec la page (bouton de demande, panneau QC)
+  useEffect(() => {
+    onLevelChange?.(activeLevel);
+  }, [activeLevel, onLevelChange]);
+
+  async function handleChangeThreshold() {
+    setThresholdError(null);
+    const response = await updateThreshold(thresholdInput);
+
+    // En cas de succès, l'affichage est mis à jour par le socket thresholdChange
+    if (!response?.success) {
+      setThresholdError(response?.message || "Erreur lors du changement de seuil");
+    }
+  }
 
   // Recalcule la position de la ligne quand on change de zone / qu'on resize / qu'on scroll
   useEffect(() => {
@@ -427,6 +506,10 @@ export default function ZoneMap({
                 </button>
               </div>
 
+              <p className="text-sm text-white/50 mb-4">
+                Seuil de rétention : {retentionLevel ?? "?"} %
+              </p>
+
               <h3 className="text-sm uppercase tracking-wide text-white/50 mb-3">
                 Ressources
               </h3>
@@ -508,6 +591,35 @@ export default function ZoneMap({
               Niveau {level}
             </button>
           ))}
+        </div>
+      )}
+
+      {user != null && user.role == "CD" && activeLevel === 5 && (
+        <div className="relative right-[31px] z-45 mx-auto mt-4 w-full max-w-md rounded-xl border border-white/10 bg-white/5 p-3 text-white">
+          <label className="mb-2 block text-xs uppercase tracking-wide text-white/50">
+            Seuil de rétention de tous les quartiers (15 à 30 %) — actuel :{" "}
+            {retentionLevel ?? "?"} %
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={15}
+              max={30}
+              value={thresholdInput}
+              onChange={(event) => setThresholdInput(Number(event.target.value))}
+              className="w-20 rounded-lg border border-white/20 bg-[#0a1420] px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-400"
+            />
+            <button
+              type="button"
+              onClick={handleChangeThreshold}
+              className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-500"
+            >
+              Appliquer à toute la ville
+            </button>
+          </div>
+          {thresholdError && (
+            <p className="mt-2 text-xs text-red-400">{thresholdError}</p>
+          )}
         </div>
       )}
     </main>

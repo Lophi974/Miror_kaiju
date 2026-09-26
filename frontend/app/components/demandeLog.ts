@@ -7,7 +7,7 @@ export type DemandeLog = {
   fromZone: string;
   toZone: string;
   resource: string;
-  horaire: string;
+  quantity: number;
   createdAt: string;
 };
 
@@ -20,7 +20,7 @@ function isDemandeLog(value: unknown): value is DemandeLog {
     typeof log.fromZone === "string" &&
     typeof log.toZone === "string" &&
     typeof log.resource === "string" &&
-    typeof log.horaire === "string" &&
+    typeof log.quantity === "number" &&
     typeof log.createdAt === "string"
   );
 }

@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'f404822236475e6bddc6e180765cd5a919f408808e333a97079bfbc7d9a20cbd'>;
+  StorageHashBase<'da02e4ace0c5f78a4c5ead465d6b91980d93e7fc00990a29d9f6a2f43619f558'>;
 export type ExecutionHash =
-  ExecutionHashBase<'d0ad5c9dc86bb9861779584f0f08f91b659ede3311b0d99fdcd6a3ebbc667be3'>;
+  ExecutionHashBase<'a79af4a2c5275f28620167d0dcd017447b6241865dc16033f0aea825b7203e80'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -307,6 +307,12 @@ export type FieldOutputTypes = {
       readonly currentQuantity: CodecTypes['pg/int4@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
+    readonly QuarterResourceAmount: {
+      readonly id: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
+      readonly amount: CodecTypes['pg/int4@1']['output'];
+    };
     readonly ReservationRequest: {
       readonly id: Char<36>;
       readonly quarterId: Char<36>;
@@ -455,6 +461,12 @@ export type FieldInputTypes = {
       readonly currentQuantity: CodecTypes['pg/int4@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
+    readonly QuarterResourceAmount: {
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+      readonly amount: CodecTypes['pg/int4@1']['input'];
+    };
     readonly ReservationRequest: {
       readonly id: CodecTypes['sql/char@1']['input'];
       readonly quarterId: CodecTypes['sql/char@1']['input'];
@@ -586,6 +598,12 @@ export type StorageColumnTypes = {
       readonly id: Char<36>;
       readonly quarterAId: Char<36>;
       readonly quarterBId: Char<36>;
+    };
+    readonly quarter_resource_amounts: {
+      readonly amount: CodecTypes['pg/int4@1']['output'];
+      readonly id: Char<36>;
+      readonly quarterId: Char<36>;
+      readonly resourceTypeId: Char<36>;
     };
     readonly quarter_resources: {
       readonly currentQuantity: CodecTypes['pg/int4@1']['output'];
@@ -735,6 +753,12 @@ export type StorageColumnInputTypes = {
       readonly quarterAId: CodecTypes['sql/char@1']['input'];
       readonly quarterBId: CodecTypes['sql/char@1']['input'];
     };
+    readonly quarter_resource_amounts: {
+      readonly amount: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['sql/char@1']['input'];
+      readonly quarterId: CodecTypes['sql/char@1']['input'];
+      readonly resourceTypeId: CodecTypes['sql/char@1']['input'];
+    };
     readonly quarter_resources: {
       readonly currentQuantity: CodecTypes['pg/int4@1']['input'];
       readonly id: CodecTypes['sql/char@1']['input'];
@@ -852,6 +876,7 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     users: public_User[];
     resources: public_QuarterResource[];
+    resourceAmounts: public_QuarterResourceAmount[];
     severity: public_DistrictSeverity | null;
     adjacentAsA: public_QuarterAdjacency[];
     adjacentAsB: public_QuarterAdjacency[];
@@ -864,6 +889,7 @@ export namespace Models {
     readonly [RelationKeys]?:
       | 'users'
       | 'resources'
+      | 'resourceAmounts'
       | 'severity'
       | 'adjacentAsA'
       | 'adjacentAsB'
@@ -918,11 +944,16 @@ export namespace Models {
     name: CodecTypes['pg/text@1']['output'];
     unit: CodecTypes['pg/text@1']['output'];
     quarterResources: public_QuarterResource[];
+    quarterResourceAmounts: public_QuarterResourceAmount[];
     transferRequests: public_TransferRequest[];
     reservations: public_ReservationRequest[];
     conflictNotifications: public_ConflictNotification[];
     readonly [RelationKeys]?:
-      'quarterResources' | 'transferRequests' | 'reservations' | 'conflictNotifications';
+      | 'quarterResources'
+      | 'quarterResourceAmounts'
+      | 'transferRequests'
+      | 'reservations'
+      | 'conflictNotifications';
   };
   export type public_QuarterResource = {
     id: Char<36>;
@@ -931,6 +962,15 @@ export namespace Models {
     initialQuantity: CodecTypes['pg/int4@1']['output'];
     currentQuantity: CodecTypes['pg/int4@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    quarter: public_Quarter;
+    resourceType: public_ResourceType;
+    readonly [RelationKeys]?: 'quarter' | 'resourceType';
+  };
+  export type public_QuarterResourceAmount = {
+    id: Char<36>;
+    quarterId: Char<36>;
+    resourceTypeId: Char<36>;
+    amount: CodecTypes['pg/int4@1']['output'];
     quarter: public_Quarter;
     resourceType: public_ResourceType;
     readonly [RelationKeys]?: 'quarter' | 'resourceType';
@@ -1088,6 +1128,7 @@ export declare const models: {
     User: Models.public_User;
     ResourceType: Models.public_ResourceType;
     QuarterResource: Models.public_QuarterResource;
+    QuarterResourceAmount: Models.public_QuarterResourceAmount;
     DistrictSeverity: Models.public_DistrictSeverity;
     SeverityHistory: Models.public_SeverityHistory;
     ReservationRequest: Models.public_ReservationRequest;
@@ -1492,6 +1533,75 @@ type ContractBase = Omit<
                     readonly columns: readonly ['id'];
                   };
                   readonly name: 'quarter_adjacency_b_fkey';
+                },
+              ];
+            };
+            readonly quarter_resource_amounts: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly quarterId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly resourceTypeId: {
+                  readonly nativeType: 'character';
+                  readonly codecId: 'sql/char@1';
+                  readonly nullable: false;
+                  readonly typeParams: { readonly length: 36 };
+                };
+                readonly amount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['quarterId', 'resourceTypeId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'quarter_resource_amounts_quarterId_idx_ceb22f71';
+                  readonly prefix: 'quarter_resource_amounts_quarterId_idx';
+                  readonly columns: readonly ['quarterId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'quarter_resource_amounts_resourceTypeId_idx_04cc477c';
+                  readonly prefix: 'quarter_resource_amounts_resourceTypeId_idx';
+                  readonly columns: readonly ['resourceTypeId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarter_resource_amounts';
+                    readonly columns: readonly ['quarterId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarters';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quarter_resource_amounts';
+                    readonly columns: readonly ['resourceTypeId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'resource_types';
+                    readonly columns: readonly ['id'];
+                  };
                 },
               ];
             };
@@ -2151,6 +2261,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'QuarterResource';
     };
+    readonly quarter_resource_amounts: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'QuarterResourceAmount';
+    };
     readonly district_severities: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'DistrictSeverity';
@@ -2660,6 +2774,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['quarterId'];
                 };
               };
+              readonly resourceAmounts: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuarterResourceAmount';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quarterId'];
+                };
+              };
               readonly severity: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2918,6 +3043,74 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly QuarterResourceAmount: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly quarterId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly resourceTypeId: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/char@1';
+                  readonly typeParams: { readonly length: 36 };
+                };
+              };
+              readonly amount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+            };
+            readonly relations: {
+              readonly quarter: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Quarter';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quarterId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly resourceType: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResourceType';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['resourceTypeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'quarter_resource_amounts';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly quarterId: { readonly column: 'quarterId' };
+                readonly resourceTypeId: { readonly column: 'resourceTypeId' };
+                readonly amount: { readonly column: 'amount' };
+              };
+            };
+          };
           readonly ReservationRequest: {
             readonly fields: {
               readonly id: {
@@ -3053,6 +3246,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'QuarterResource';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['resourceTypeId'];
+                };
+              };
+              readonly quarterResourceAmounts: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuarterResourceAmount';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -3873,6 +4077,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'quarter_adjacencies';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'quarter_resource_amounts';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv7' };

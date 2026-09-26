@@ -8,6 +8,7 @@ import transactionRouter from "./modules/routes/transaction.route";
 import cors from "cors";
 import { createServer } from "node:http";
 import { initializeSocketServer } from "./wc/socket";
+import { startTransferArrivalJob } from "./modules/services/transaction.service";
 
 const app = Express();
 
@@ -34,6 +35,7 @@ app.use("/api/transactions", transactionRouter);
 
 const server = createServer(app);
 initializeSocketServer(server);
+startTransferArrivalJob();
 
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

@@ -11,7 +11,7 @@ export async function fetchActiveLevel() {
     return data;
   } catch (error) {
     console.error("Error fetching active level:", error);
-    return { success: false, message: "Error fetching active level" };
+    return { success: false, message: "Impossible de récupérer le niveau de sévérité." };
   }
 }
 
@@ -21,14 +21,14 @@ export async function changeSeverityLevel(newLevel: number) {
 
     // fetchMe renvoie null si l'utilisateur n'est pas connecté (401)
     if (!user || !user.user) {
-      throw new Error("User not authenticated.");
+      throw new Error("Utilisateur non connecté.");
     }
 
     const { role } = user.user;
 
     if (role !== "CD") {
       throw new Error(
-        "User does not have permission to change severity level.",
+        "Vous n'avez pas la permission de modifier le niveau de sévérité.",
       );
     }
 
@@ -46,6 +46,6 @@ export async function changeSeverityLevel(newLevel: number) {
     return data;
   } catch (error) {
     console.error("Error changing severity level:", error);
-    return { success: false, message: "Error changing severity level" };
+    return { success: false, message: "Impossible de modifier le niveau de sévérité." };
   }
 }

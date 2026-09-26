@@ -15,7 +15,7 @@ export async function loginUser(
   if (!email || !password) {
     return res
       .status(400)
-      .json({ success: false, message: "Email and password are required" });
+      .json({ success: false, message: "L'email et le mot de passe sont requis." });
   }
 
   console.log("loginUser email:", email);
@@ -30,7 +30,7 @@ export async function loginUser(
   if (!id || !role || !hashedPassword || !name) {
     return res
       .status(401)
-      .json({ success: false, message: "Invalid email or password" });
+      .json({ success: false, message: "Email ou mot de passe incorrect." });
   }
 
   const passwordWithPepper = password + PEPPER;
@@ -43,7 +43,7 @@ export async function loginUser(
   if (!isPasswordValid) {
     return res
       .status(401)
-      .json({ success: false, message: "Invalid email or password" });
+      .json({ success: false, message: "Email ou mot de passe incorrect." });
   }
 
   const token = createToken({
@@ -60,7 +60,7 @@ export async function loginUser(
       maxAge: 2 * 24 * 60 * 60 * 1000,
     })
     .status(200)
-    .json({ success: true, message: "Login successful", token });
+    .json({ success: true, message: "Connexion réussie.", token });
 }
 
 export async function me(req: any, res: any) {

@@ -7,7 +7,7 @@ import { authenticateToken } from "../middleware/authenticateToken";
 
 const router = Router();
 
-router.get("/", getSeverityForOneQuarter);
+router.get("/", authenticateToken, getSeverityForOneQuarter);
 router.put("/", authenticateToken, changeSeverityForAllQuarters);
 
 export default router;
