@@ -8,7 +8,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 export function authenticateToken(req: any, res: any, next: any) {
   const cookieToken = req.cookies?.token;
 
-
   const authHeader = req.headers.authorization;
   const headerToken =
     authHeader && authHeader.startsWith("Bearer ")
@@ -16,8 +15,6 @@ export function authenticateToken(req: any, res: any, next: any) {
       : null;
 
   const token = cookieToken || headerToken;
-
-  console.log("Received token:", token ? "present" : "undefined");
 
   if (!token) {
     return res

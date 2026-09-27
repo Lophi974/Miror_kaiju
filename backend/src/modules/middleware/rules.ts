@@ -39,10 +39,6 @@ export function firstStepChecking(
   severityLevel: number,
   action: string,
 ): boolean {
-  console.log(
-    `Checking authorization for role: ${role}, severityLevel: ${severityLevel}, action: ${action}`,
-  );
-
   if (!action || !RULE[action]) {
     return false;
   }

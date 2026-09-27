@@ -246,7 +246,6 @@ export default function ZoneMap({
     const socket = getSocket();
 
     const handleAlertLevelChange = (payload: { level: number }) => {
-      console.log("[SOCKET] alertLevelChange reçu :", payload);
       setActiveLevel(payload.level);
     };
 
@@ -255,7 +254,6 @@ export default function ZoneMap({
         resourceTypeId: string;
         currentQuantity: number;
       }) => {
-        console.log("[SOCKET] resourceChange reçu :", payload);
         const zone = zoneByQuarterId.current[payload.quarterId];
         if (!zone) return;
 
@@ -270,7 +268,6 @@ export default function ZoneMap({
       };
 
     const handleThresholdChange = (payload: { treshHoldPercent: number }) => {
-      console.log("[SOCKET] thresholdChange reçu :", payload);
       setRetentionLevel(payload.treshHoldPercent);
     };
 
@@ -341,17 +338,12 @@ export default function ZoneMap({
     setActiveLevel(level);
 
     try {
-      const response = await changeSeverityLevel(level);
-      if (response) {
-        console.log("Severity level changed successfully:", response);
-      }
+      await changeSeverityLevel(level);
       showToast(level);
     } catch (error) {
       console.error("Error changing severity level:", error);
     }
   }
-
-  console.log("test de user", user);
 
   return (
     <main className="min-h-screen bg-[#11253C] pt-8">

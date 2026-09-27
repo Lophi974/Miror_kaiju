@@ -20,7 +20,6 @@ export async function reserveResources(
       },
     );
     const data = await response.json();
-    console.log("reserveResources response data:", data);
     return data;
   } catch (error) {
     console.error("Error reserving resources:", error);
@@ -54,7 +53,6 @@ export async function requestResources(
       },
     );
     const data = await response.json();
-    console.log("requestResources response data:", data);
     return data;
   } catch (error) {
     console.error("Error requesting resources:", error);
@@ -89,7 +87,6 @@ export async function transferResources(
       },
     );
     const data = await response.json();
-    console.log("transferResources response data:", data);
     return data;
   } catch (error) {
     console.error("Error transferring resources:", error);
@@ -123,7 +120,6 @@ export async function requisitionResources(
       },
     );
     const data = await response.json();
-    console.log("requisitionResources response data:", data);
     return data;
   } catch (error) {
     console.error("Error requisitioning resources:", error);
@@ -141,7 +137,6 @@ export async function fetchPendingRequests() {
       },
     );
     const data = await response.json();
-    console.log("fetchPendingRequests response data:", data);
     return data;
   } catch (error) {
     console.error("Error fetching pending requests:", error);
@@ -158,7 +153,6 @@ export async function fetchRequestHistory() {
       },
     );
     const data = await response.json();
-    console.log("fetchRequestHistory response data:", data);
     return data;
   } catch (error) {
     console.error("Error fetching request history:", error);
@@ -176,7 +170,6 @@ export async function approveTransferRequest(transferRequestId: string) {
       },
     );
     const data = await response.json();
-    console.log("approveTransferRequest response data:", data);
     return data;
   } catch (error) {
     console.error("Error approving transfer request:", error);
@@ -201,7 +194,6 @@ export async function rejectTransferRequest(
       },
     );
     const data = await response.json();
-    console.log("rejectTransferRequest response data:", data);
     return data;
   } catch (error) {
     console.error("Error rejecting transfer request:", error);
@@ -219,7 +211,6 @@ export async function fetchPendingTransits() {
       },
     );
     const data = await response.json();
-    console.log("fetchPendingTransits response data:", data);
     return data;
   } catch (error) {
     console.error("Error fetching pending transits:", error);
@@ -238,7 +229,6 @@ export async function approveTransit(transferRequestId: string) {
       },
     );
     const data = await response.json();
-    console.log("approveTransit response data:", data);
     return data;
   } catch (error) {
     console.error("Error approving transit:", error);
@@ -265,7 +255,6 @@ export async function rejectTransit(
       },
     );
     const data = await response.json();
-    console.log("rejectTransit response data:", data);
     return data;
   } catch (error) {
     console.error("Error rejecting transit:", error);

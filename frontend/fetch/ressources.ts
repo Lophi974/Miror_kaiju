@@ -1,13 +1,10 @@
 import { API_URL } from "./config";
 
-
 export async function fetchRessourcesByQuarter(quarterId: string) {
 
     try{
-        console.log("Fetching resources for quarter:", quarterId);
         const response = await fetch(`${API_URL}/api/ressources/quarter/${quarterId}`);
         const data = await response.json();
-        console.log("fetchRessourcesByQuarter response data:", data);
         return data;
     } catch (error) {
         console.error("Error fetching resources by quarter:", error);
@@ -18,10 +15,8 @@ export async function fetchRessourcesByQuarter(quarterId: string) {
 
 export async function fetchAllQuarter() {
     try{
-        console.log("Fetching all quarters");
         const response = await fetch(`${API_URL}/api/ressources/quarters`);
         const data = await response.json();
-        console.log("fetchAllQuarter response data:", data);
         return data;
     } catch (error) {
         console.error("Error fetching all quarters:", error);
@@ -42,7 +37,6 @@ export async function updateThreshold(thresholdPercent: number) {
             credentials: "include",
         });
         const data = await response.json();
-        console.log("updateThreshold response data:", data);
         return data;
     } catch (error) {
         console.error("Error updating threshold:", error);
@@ -57,7 +51,6 @@ export async function fetchAdjacentQuarters(quarterId: string) {
             credentials: "include",
         });
         const data = await response.json();
-        console.log("fetchAdjacentQuarters response data:", data);
         return data;
     } catch (error) {
         console.error("Error fetching adjacent quarters:", error);

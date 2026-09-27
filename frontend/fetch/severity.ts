@@ -8,7 +8,6 @@ export async function fetchActiveLevel() {
     });
     const data = await response.json();
 
-    console.log("fetchActiveLevel response data:", data);
     return data;
   } catch (error) {
     console.error("Error fetching active level:", error);
@@ -43,7 +42,6 @@ export async function changeSeverityLevel(newLevel: number) {
     });
 
     const data = await response.json();
-    console.log("changeSeverityLevel response data:", data);
     return data;
   } catch (error) {
     console.error("Error changing severity level:", error);

@@ -151,7 +151,6 @@ export default function DemandesPanel({ level }: { level: number | null }) {
 
     const socket = getSocket();
     const handleTransferRequestChange = () => {
-      console.log("[SOCKET] transferRequestChange reçu");
       loadRequests();
     };
 

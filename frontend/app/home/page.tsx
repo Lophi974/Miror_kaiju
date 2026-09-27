@@ -231,7 +231,6 @@ export default function ZoneMap({
     );
 
     socket.on("alertLevelChange", (payload: { level: number }) => {
-      console.log("[SOCKET] alertLevelChange reçu :", payload);
       setActiveLevel(payload.level);
       // Le seuil de rétention dépend du quartier, pas du niveau global, donc
       // on ne le retouche pas ici -- mais on rafraîchit les ressources, car
@@ -289,16 +288,12 @@ export default function ZoneMap({
     setActiveLevel(level);
 
     try {
-      const response = await changeSeverityLevel(level);
-      if (response) {
-        console.log("Severity level changed successfully:", response);
-      }
+      await changeSeverityLevel(level);
       showToast(level);
     } catch (error) {
       console.error("Error changing severity level:", error);
     }
   }
-
 
   return (
     <main className="min-h-screen bg-[#11253C] pt-20">

@@ -28,9 +28,6 @@ export async function loginUser(
       .json({ success: false, message: "L'email et le mot de passe sont requis." });
   }
 
-  console.log("loginUser email:", email);
-  console.log("loginUser password:", password);
-
   const { id, role, hashedPassword, name, quarterId } =
     (await getUserByEmail(email)) || {};
 
@@ -79,7 +76,6 @@ export async function me(req: any, res: any) {
     name: req.user.name,
     quarterId: req.user.quarterId ?? null,
   };
-  console.log(userInfo);
   return res.status(200).json({ success: true, user: userInfo });
 }
 

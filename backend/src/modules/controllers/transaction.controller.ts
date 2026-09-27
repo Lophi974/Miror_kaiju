@@ -311,8 +311,6 @@ export async function requisitionRessources(
     });
   }
 
-  console.log("Requisition request received:", req.body);
-
   try {
     const { resourceId, quantity, sourceQuarterId, targetQuarterId } = req.body;
     const requisitionedById = req.user.sub;

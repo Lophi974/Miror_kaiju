@@ -13,14 +13,6 @@ export function initializeSocketServer(httpServer: HttpServer) {
     },
   });
 
-  io.on("connection", (socket) => {
-    console.log("a user connected");
-
-    socket.on("disconnect", () => {
-      console.log("a user disconnected");
-    });
-  });
-
   return io;
 }
 
